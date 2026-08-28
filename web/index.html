@@ -7,26 +7,38 @@
 <link rel="stylesheet" href="/panel.css">
 </head>
 <body>
-  <header class="bar">
-    <select id="view" aria-label="View">
-      <option value="suite">one suite · every expression</option>
-      <option value="compare">one expression · every suite</option>
-    </select>
-    <select id="suites" aria-label="Suite"></select>
-    <select id="expression" aria-label="Expression" hidden></select>
-    <select id="repeat" aria-label="Which repeat"></select>
-    <label class="check"><input type="checkbox" id="chassis"> chassis</label>
-    <span class="spacer"></span>
-    <select id="format" aria-label="Format">
-      <option value="png">PNG</option>
-      <option value="jpeg">JPEG</option>
-    </select>
-    <button id="save" type="button">export</button>
-  </header>
-  <p id="config" class="config"></p>
-  <ul id="legend" class="legend"></ul>
-  <main id="sheet" class="sheet"></main>
-  <aside id="detail" class="detail" hidden></aside>
+  <nav id="nav" class="nav" role="tablist" aria-label="View">
+    <span class="mark">bitface</span>
+    <button role="tab" data-view="overview">overview</button>
+    <button role="tab" data-view="sheet">form comparison</button>
+    <button role="tab" data-view="compare">model comparison</button>
+    <button role="tab" data-view="inspect">inspect</button>
+    <button role="tab" data-view="plate">plate</button>
+    <button role="tab" data-view="method">method</button>
+  </nav>
+  <main>
+    <header class="page">
+      <h1 id="title"></h1>
+      <p id="intro"></p>
+    </header>
+    <div id="bar" class="bar">
+      <div class="subject">
+        <label class="field" data-for="suites">model<select id="suites"></select></label>
+        <label class="field" data-for="expression">expression<select id="expression"></select></label>
+        <label class="field" data-for="targets">form<select id="targets"></select></label>
+      </div>
+      <div class="controls">
+        <label class="field" data-for="repeat">try<select id="repeat"></select></label>
+        <button id="chassis" type="button" class="ghost"></button>
+      </div>
+    </div>
+    <dl id="details" class="details"></dl>
+    <div id="stage" class="stage"></div>
+    <div id="export" class="export">
+      <select id="format" aria-label="Format"></select>
+      <button id="save" type="button">export</button>
+    </div>
+  </main>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
