@@ -1,0 +1,195 @@
+{
+  "id": "20260828T162331Z-haiku-4-5-both-batch-all-ref6-happy-sad-r1",
+  "started_at": "2026-08-28T16:23:31.613593+00:00",
+  "condition": {
+    "model": "claude-haiku-4-5",
+    "target": "both",
+    "batch": "all",
+    "references": 6,
+    "context": 0,
+    "effort": null,
+    "width": 16,
+    "height": 10,
+    "expressions": [
+      "happy",
+      "sad"
+    ],
+    "slug": "haiku-4-5-both-batch-all-ref6-happy-sad"
+  },
+  "repeat": 1,
+  "calls": [
+    {
+      "index": 0,
+      "expressions": [
+        "happy",
+        "sad"
+      ],
+      "duration_seconds": 1.73,
+      "input_tokens": 1196,
+      "output_tokens": 190,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "thinking_tokens": 0,
+      "stop_reason": "end_turn",
+      "prompt": "Here are real faces from the Mac ROM, in both forms, so you can see the house style:\n\nhappy\n················  0000\n···█···█···█····  1110\n···█···█···█····  1110\n·······█········  0100\n·······█········  0100\n······██········  0300\n················  0000\n····█····█······  0840\n·····████·······  0780\n················  0000\n\nsunglasses\n················  0000\n███████████████·  FFFE\n·█████·█·█████··  7D7C\n·█████·█·█████··  7D7C\n··███··█··███···  3938\n······██········  0300\n················  0000\n···█████████····  1FF0\n················  0000\n················  0000\n\nnerdy\n··███·····███···  3838\n·█···█·█·█···█·█  4545\n██·█·█████·█·██·  D7D6\n·█···█·█·█···█··  4544\n··███··█··███···  3938\n······██········  0300\n················  0000\n················  0000\n····██████······  0FC0\n················  0000\n\nzombie\n·███·····█████··  707C\n█···█···█·····█·  8882\n█···█···█···█·█·  888A\n█·█·█···█···█·█·  A88A\n·███····█·····█·  7082\n·········█····█·  0042\n··········████··  003C\n···████·········  1E00\n··██████········  3F00\n··██████········  3F00\n\nhorror\n··███·····███···  3838\n·█···█···█···█··  4444\n·█···█···█···█··  4444\n·█···█···█···█··  4444\n··███·····███···  3838\n······███·······  0380\n······███·······  0380\n······███·······  0380\n······███·······  0380\n······███·······  0380\n\nyuck\n················  0000\n···██·····██····  1830\n·····█···█······  0440\n······█·█·······  0280\n················  0000\n················  0000\n···█████████····  1FF0\n···█·█·█·█·█····  1550\n·····█···█······  0440\n······███·······  0380\n\nDraw these 2 faces:\n\n- happy: smiling, content\n- sad: downturned mouth, dejected",
+      "prompt_tokens": 1196
+    }
+  ],
+  "attempts": [
+    {
+      "expression": "happy",
+      "tier": "easy",
+      "grid": [
+        "················",
+        "···█···█···█····",
+        "···█···█···█····",
+        "·······█········",
+        "·······█········",
+        "······██········",
+        "················",
+        "····█····█······",
+        "·····████·······",
+        "················"
+      ],
+      "hex": [
+        "0000",
+        "1110",
+        "1110",
+        "0100",
+        "0100",
+        "0300",
+        "0000",
+        "0840",
+        "0780",
+        "0000"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "1110",
+        "1110",
+        "0100",
+        "0100",
+        "0300",
+        "0000",
+        "0840",
+        "0780",
+        "0000"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": true,
+      "differing_rows": [],
+      "missing": false
+    },
+    {
+      "expression": "sad",
+      "tier": "easy",
+      "grid": [
+        "················",
+        "···█···█···█····",
+        "···█···█···█····",
+        "·······█········",
+        "·······█········",
+        "······██········",
+        "················",
+        "·····████·······",
+        "····█····█······",
+        "················"
+      ],
+      "hex": [
+        "0000",
+        "1110",
+        "1110",
+        "0100",
+        "0100",
+        "0300",
+        "0000",
+        "0780",
+        "0840",
+        "0000"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "1110",
+        "1110",
+        "0100",
+        "0100",
+        "0300",
+        "0000",
+        "0780",
+        "0840",
+        "0000"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": true,
+      "differing_rows": [],
+      "missing": false
+    }
+  ],
+  "totals": {
+    "requested": 2,
+    "returned": 2,
+    "well_formed": 2,
+    "measurable": 2,
+    "agreed": 2,
+    "input_tokens": 1196,
+    "output_tokens": 190,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0,
+    "thinking_tokens": 0,
+    "duration_seconds": 1.73,
+    "agreement_rate": 1.0,
+    "prompt_tokens": 1196,
+    "answer_tokens": 190
+  },
+  "prompts": {
+    "system": "You draw 1-bit icons for the original Macintosh, in the exact format its ROM stored them.\n\nEvery icon is a face: 16 pixels wide and 10 pixels tall, meant to sit inside the screen of a Happy Mac.\n\nYou give each face in two forms, and they must describe the same pixels.\n\n1. \"grid\" -- 10 strings of exactly 16 characters. \"█\" is a set pixel, \"·\" is an empty one.\n2. \"hex\" -- 10 strings of exactly 4 hex digits. Each row is 16 bits, most significant bit leftmost, so the first digit is the leftmost four pixels of that row.\n\nDraw the grid first, then read the hex off it row by row.\n\nA face reads at this size only if it is built from a few heavy features with clear space around them -- eyes near the top, a mouth in the lower half. There is no room for shading, outlines, or detail smaller than a pixel.",
+    "response_schema": {
+      "type": "object",
+      "properties": {
+        "faces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "expression": {
+                "type": "string",
+                "description": "The expression this face is."
+              },
+              "grid": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "10 rows of 16 characters, █ and ·"
+              },
+              "hex": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "10 rows of 4 hex digits"
+              }
+            },
+            "required": [
+              "expression",
+              "grid",
+              "hex"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "faces"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "schema_version": 3
+}

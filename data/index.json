@@ -1,0 +1,1158 @@
+{
+  "generated_at": "2026-08-28T16:22:21.686463+00:00",
+  "count": 9,
+  "conditions": [
+    {
+      "slug": "haiku-4-5-both-batch-all-ref6",
+      "condition": {
+        "model": "claude-haiku-4-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "slug": "haiku-4-5-both-batch-all-ref6"
+      },
+      "repeats": 3,
+      "runs": [
+        "20260828T151808Z-haiku-4-5-both-batch-all-ref6-r1",
+        "20260828T151818Z-haiku-4-5-both-batch-all-ref6-r2",
+        "20260828T151826Z-haiku-4-5-both-batch-all-ref6-r3"
+      ],
+      "well_formed": 30,
+      "returned": 36,
+      "agreed": 16,
+      "measurable": 36,
+      "agreement_rate": {
+        "mean": 0.4444,
+        "min": 0.4166666666666667,
+        "max": 0.5
+      },
+      "output_tokens": 4030,
+      "duration_seconds": 25.56
+    },
+    {
+      "slug": "opus-5-both-batch-all-ref6",
+      "condition": {
+        "model": "claude-opus-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "expressions": [],
+        "slug": "opus-5-both-batch-all-ref6"
+      },
+      "repeats": 3,
+      "runs": [
+        "20260828T161900Z-opus-5-both-batch-all-ref6-r1",
+        "20260828T161900Z-opus-5-both-batch-all-ref6-r2",
+        "20260828T161900Z-opus-5-both-batch-all-ref6-r3"
+      ],
+      "well_formed": 35,
+      "returned": 36,
+      "agreed": 34,
+      "measurable": 36,
+      "agreement_rate": {
+        "mean": 0.9444,
+        "min": 0.9166666666666666,
+        "max": 1.0
+      },
+      "output_tokens": 45530,
+      "duration_seconds": 528.16
+    },
+    {
+      "slug": "sonnet-5-both-batch-all-ref6",
+      "condition": {
+        "model": "claude-sonnet-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "slug": "sonnet-5-both-batch-all-ref6"
+      },
+      "repeats": 3,
+      "runs": [
+        "20260828T151916Z-sonnet-5-both-batch-all-ref6-r1",
+        "20260828T152136Z-sonnet-5-both-batch-all-ref6-r2",
+        "20260828T152434Z-sonnet-5-both-batch-all-ref6-r3"
+      ],
+      "well_formed": 36,
+      "returned": 36,
+      "agreed": 34,
+      "measurable": 36,
+      "agreement_rate": {
+        "mean": 0.9444,
+        "min": 0.9166666666666666,
+        "max": 1.0
+      },
+      "output_tokens": 51715,
+      "duration_seconds": 476.09
+    }
+  ],
+  "runs": [
+    {
+      "id": "20260828T151808Z-haiku-4-5-both-batch-all-ref6-r1",
+      "file": "20260828T151808Z-haiku-4-5-both-batch-all-ref6-r1.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T15:18:08.774139+00:00",
+      "repeat": 1,
+      "condition": {
+        "model": "claude-haiku-4-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "slug": "haiku-4-5-both-batch-all-ref6"
+      },
+      "slug": "haiku-4-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 9,
+        "measurable": 12,
+        "agreed": 5,
+        "input_tokens": 1315,
+        "output_tokens": 1457,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 0,
+        "duration_seconds": 9.41,
+        "agreement_rate": 0.4166666666666667,
+        "prompt_tokens": 1315,
+        "answer_tokens": 1457
+      },
+      "calls": 1,
+      "faults": {
+        "grid_row_width": 5,
+        "grid_stray_character": 1
+      },
+      "differing_rows": {
+        "count": 7,
+        "median": 2,
+        "max": 6
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 4
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": false,
+          "agrees": false,
+          "differing_rows": 5
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": false,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 2
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 2
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": false,
+          "agrees": false,
+          "differing_rows": 6
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    },
+    {
+      "id": "20260828T151818Z-haiku-4-5-both-batch-all-ref6-r2",
+      "file": "20260828T151818Z-haiku-4-5-both-batch-all-ref6-r2.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T15:18:18.185232+00:00",
+      "repeat": 2,
+      "condition": {
+        "model": "claude-haiku-4-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "slug": "haiku-4-5-both-batch-all-ref6"
+      },
+      "slug": "haiku-4-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 11,
+        "measurable": 12,
+        "agreed": 5,
+        "input_tokens": 1315,
+        "output_tokens": 1394,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 0,
+        "duration_seconds": 8.2,
+        "agreement_rate": 0.4166666666666667,
+        "prompt_tokens": 1315,
+        "answer_tokens": 1394
+      },
+      "calls": 1,
+      "faults": {
+        "grid_row_width": 1
+      },
+      "differing_rows": {
+        "count": 7,
+        "median": 2,
+        "max": 5
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 3
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 3
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 5
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": false,
+          "agrees": false,
+          "differing_rows": 2
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    },
+    {
+      "id": "20260828T151826Z-haiku-4-5-both-batch-all-ref6-r3",
+      "file": "20260828T151826Z-haiku-4-5-both-batch-all-ref6-r3.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T15:18:26.392399+00:00",
+      "repeat": 3,
+      "condition": {
+        "model": "claude-haiku-4-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "slug": "haiku-4-5-both-batch-all-ref6"
+      },
+      "slug": "haiku-4-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 10,
+        "measurable": 12,
+        "agreed": 6,
+        "input_tokens": 1315,
+        "output_tokens": 1179,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 0,
+        "duration_seconds": 7.95,
+        "agreement_rate": 0.5,
+        "prompt_tokens": 1315,
+        "answer_tokens": 1179
+      },
+      "calls": 1,
+      "faults": {
+        "grid_row_width": 2
+      },
+      "differing_rows": {
+        "count": 6,
+        "median": 4,
+        "max": 6
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 6
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": false,
+          "agrees": false,
+          "differing_rows": 4
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": false,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 3
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 4
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    },
+    {
+      "id": "20260828T151916Z-sonnet-5-both-batch-all-ref6-r1",
+      "file": "20260828T151916Z-sonnet-5-both-batch-all-ref6-r1.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T15:19:16.358520+00:00",
+      "repeat": 1,
+      "condition": {
+        "model": "claude-sonnet-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "slug": "sonnet-5-both-batch-all-ref6"
+      },
+      "slug": "sonnet-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 12,
+        "measurable": 12,
+        "agreed": 11,
+        "input_tokens": 1541,
+        "output_tokens": 14327,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 13155,
+        "duration_seconds": 139.7,
+        "agreement_rate": 0.9166666666666666,
+        "prompt_tokens": 1541,
+        "answer_tokens": 1172
+      },
+      "calls": 1,
+      "faults": {},
+      "differing_rows": {
+        "count": 1,
+        "median": 1,
+        "max": 1
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    },
+    {
+      "id": "20260828T152136Z-sonnet-5-both-batch-all-ref6-r2",
+      "file": "20260828T152136Z-sonnet-5-both-batch-all-ref6-r2.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T15:21:36.062114+00:00",
+      "repeat": 2,
+      "condition": {
+        "model": "claude-sonnet-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "slug": "sonnet-5-both-batch-all-ref6"
+      },
+      "slug": "sonnet-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 12,
+        "measurable": 12,
+        "agreed": 12,
+        "input_tokens": 1541,
+        "output_tokens": 19356,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 18199,
+        "duration_seconds": 178.81,
+        "agreement_rate": 1.0,
+        "prompt_tokens": 1541,
+        "answer_tokens": 1157
+      },
+      "calls": 1,
+      "faults": {},
+      "differing_rows": {
+        "count": 0,
+        "median": 0,
+        "max": 0
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    },
+    {
+      "id": "20260828T152434Z-sonnet-5-both-batch-all-ref6-r3",
+      "file": "20260828T152434Z-sonnet-5-both-batch-all-ref6-r3.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T15:24:34.863645+00:00",
+      "repeat": 3,
+      "condition": {
+        "model": "claude-sonnet-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "slug": "sonnet-5-both-batch-all-ref6"
+      },
+      "slug": "sonnet-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 12,
+        "measurable": 12,
+        "agreed": 11,
+        "input_tokens": 1541,
+        "output_tokens": 18032,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 16857,
+        "duration_seconds": 157.58,
+        "agreement_rate": 0.9166666666666666,
+        "prompt_tokens": 1541,
+        "answer_tokens": 1175
+      },
+      "calls": 1,
+      "faults": {},
+      "differing_rows": {
+        "count": 1,
+        "median": 1,
+        "max": 1
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    },
+    {
+      "id": "20260828T161900Z-opus-5-both-batch-all-ref6-r1",
+      "file": "20260828T161900Z-opus-5-both-batch-all-ref6-r1.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T16:19:00.685568+00:00",
+      "repeat": 1,
+      "condition": {
+        "model": "claude-opus-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "expressions": [],
+        "slug": "opus-5-both-batch-all-ref6"
+      },
+      "slug": "opus-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 12,
+        "measurable": 12,
+        "agreed": 11,
+        "input_tokens": 1541,
+        "output_tokens": 15774,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 14552,
+        "duration_seconds": 179.33,
+        "agreement_rate": 0.9166666666666666,
+        "prompt_tokens": 1541,
+        "answer_tokens": 1222
+      },
+      "calls": 1,
+      "faults": {},
+      "differing_rows": {
+        "count": 1,
+        "median": 1,
+        "max": 1
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": false,
+          "differing_rows": 1
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    },
+    {
+      "id": "20260828T161900Z-opus-5-both-batch-all-ref6-r2",
+      "file": "20260828T161900Z-opus-5-both-batch-all-ref6-r2.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T16:19:00.685568+00:00",
+      "repeat": 2,
+      "condition": {
+        "model": "claude-opus-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "expressions": [],
+        "slug": "opus-5-both-batch-all-ref6"
+      },
+      "slug": "opus-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 12,
+        "measurable": 12,
+        "agreed": 12,
+        "input_tokens": 1541,
+        "output_tokens": 15426,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 14218,
+        "duration_seconds": 182.33,
+        "agreement_rate": 1.0,
+        "prompt_tokens": 1541,
+        "answer_tokens": 1208
+      },
+      "calls": 1,
+      "faults": {},
+      "differing_rows": {
+        "count": 0,
+        "median": 0,
+        "max": 0
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    },
+    {
+      "id": "20260828T161900Z-opus-5-both-batch-all-ref6-r3",
+      "file": "20260828T161900Z-opus-5-both-batch-all-ref6-r3.json",
+      "schema_version": 2,
+      "started_at": "2026-08-28T16:19:00.685568+00:00",
+      "repeat": 3,
+      "condition": {
+        "model": "claude-opus-5",
+        "target": "both",
+        "batch": "all",
+        "references": 6,
+        "context": 0,
+        "effort": null,
+        "width": 16,
+        "height": 10,
+        "expressions": [],
+        "slug": "opus-5-both-batch-all-ref6"
+      },
+      "slug": "opus-5-both-batch-all-ref6",
+      "totals": {
+        "requested": 12,
+        "returned": 12,
+        "well_formed": 11,
+        "measurable": 12,
+        "agreed": 11,
+        "input_tokens": 1541,
+        "output_tokens": 14330,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "thinking_tokens": 13135,
+        "duration_seconds": 166.5,
+        "agreement_rate": 0.9166666666666666,
+        "prompt_tokens": 1541,
+        "answer_tokens": 1195
+      },
+      "calls": 1,
+      "faults": {
+        "grid_stray_character": 1
+      },
+      "differing_rows": {
+        "count": 1,
+        "median": 0,
+        "max": 0
+      },
+      "expressions": {
+        "happy": {
+          "tier": "easy",
+          "well_formed": false,
+          "agrees": false,
+          "differing_rows": 0
+        },
+        "sad": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "surprised": {
+          "tier": "easy",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "angry": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sleepy": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "wink": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "yuck": {
+          "tier": "medium",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "kiss": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "confused": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "smug": {
+          "tier": "hard",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "sunglasses": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        },
+        "nerdy": {
+          "tier": "prop",
+          "well_formed": true,
+          "agrees": true,
+          "differing_rows": 0
+        }
+      }
+    }
+  ]
+}

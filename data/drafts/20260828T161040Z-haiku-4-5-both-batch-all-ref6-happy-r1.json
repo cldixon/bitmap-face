@@ -1,0 +1,101 @@
+{
+  "id": "20260828T161040Z-haiku-4-5-both-batch-all-ref6-happy-r1",
+  "started_at": "2026-08-28T16:10:40.209800+00:00",
+  "condition": {
+    "model": "claude-haiku-4-5",
+    "target": "both",
+    "batch": "all",
+    "references": 6,
+    "context": 0,
+    "effort": null,
+    "width": 16,
+    "height": 10,
+    "expressions": [
+      "happy"
+    ],
+    "slug": "haiku-4-5-both-batch-all-ref6-happy"
+  },
+  "repeat": 1,
+  "calls": [
+    {
+      "index": 0,
+      "expressions": [
+        "happy"
+      ],
+      "duration_seconds": 2.41,
+      "input_tokens": 1182,
+      "output_tokens": 119,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "thinking_tokens": 0,
+      "stop_reason": "end_turn",
+      "prompt_tokens": 1182
+    }
+  ],
+  "attempts": [
+    {
+      "expression": "happy",
+      "tier": "easy",
+      "grid": [
+        "················",
+        "···█···█···█····",
+        "···█···█···█····",
+        "·······█········",
+        "·······█········",
+        "······██········",
+        "················",
+        "····█····█······",
+        "·····████·······",
+        "················"
+      ],
+      "hex": [
+        "0000",
+        "1110",
+        "1110",
+        "0100",
+        "0100",
+        "0300",
+        "0000",
+        "0840",
+        "0780",
+        "0000"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "1110",
+        "1110",
+        "0100",
+        "0100",
+        "0300",
+        "0000",
+        "0840",
+        "0780",
+        "0000"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": true,
+      "differing_rows": [],
+      "missing": false
+    }
+  ],
+  "totals": {
+    "requested": 1,
+    "returned": 1,
+    "well_formed": 1,
+    "measurable": 1,
+    "agreed": 1,
+    "input_tokens": 1182,
+    "output_tokens": 119,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0,
+    "thinking_tokens": 0,
+    "duration_seconds": 2.41,
+    "agreement_rate": 1.0,
+    "prompt_tokens": 1182,
+    "answer_tokens": 119
+  },
+  "schema_version": 2
+}

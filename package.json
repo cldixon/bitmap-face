@@ -1,0 +1,8 @@
+{
+  "name": "bitmap-face-panel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "panel": "bun run web/server.ts"
+  }
+}

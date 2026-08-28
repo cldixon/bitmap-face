@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bitmap-face — control panel</title>
+<link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>bitmap-face</h1>
+    <label>Run
+      <select id="runs"></select>
+    </label>
+    <p id="params" class="params"></p>
+  </header>
+
+  <main>
+    <nav id="faces" class="faces" aria-label="Faces in this run"></nav>
+    <section id="detail" class="detail"></section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

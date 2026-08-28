@@ -1,0 +1,186 @@
+{
+  "id": "20260828T161351Z-haiku-4-5-transcribe-batch-all-ref6-happy-sad-r1",
+  "started_at": "2026-08-28T16:13:51.974107+00:00",
+  "condition": {
+    "model": "claude-haiku-4-5",
+    "target": "transcribe",
+    "batch": "all",
+    "references": 6,
+    "context": 0,
+    "effort": null,
+    "width": 16,
+    "height": 10,
+    "expressions": [
+      "happy",
+      "sad"
+    ],
+    "slug": "haiku-4-5-transcribe-batch-all-ref6-happy-sad"
+  },
+  "repeat": 1,
+  "calls": [
+    {
+      "index": 0,
+      "expressions": [
+        "happy",
+        "sad"
+      ],
+      "duration_seconds": 1.91,
+      "input_tokens": 504,
+      "output_tokens": 110,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "thinking_tokens": 0,
+      "stop_reason": "end_turn",
+      "prompt_tokens": 504
+    }
+  ],
+  "attempts": [
+    {
+      "expression": "happy",
+      "tier": "easy",
+      "grid": null,
+      "hex": [
+        "0000",
+        "1880",
+        "1880",
+        "0800",
+        "0800",
+        "0600",
+        "0000",
+        "2100",
+        "1E00",
+        "0000"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "1110",
+        "1110",
+        "0100",
+        "0100",
+        "0300",
+        "0000",
+        "0840",
+        "0780",
+        "0000"
+      ],
+      "given_grid": [
+        "················",
+        "···█···█···█····",
+        "···█···█···█····",
+        "·······█········",
+        "·······█········",
+        "······██········",
+        "················",
+        "····█····█······",
+        "·····████·······",
+        "················"
+      ],
+      "expected_hex": [
+        "0000",
+        "1110",
+        "1110",
+        "0100",
+        "0100",
+        "0300",
+        "0000",
+        "0840",
+        "0780",
+        "0000"
+      ],
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "differing_rows": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8
+      ],
+      "missing": false
+    },
+    {
+      "expression": "sad",
+      "tier": "easy",
+      "grid": null,
+      "hex": [
+        "0000",
+        "3838",
+        "4444",
+        "0000",
+        "3838",
+        "1010",
+        "0000",
+        "0000",
+        "0E00",
+        "0000"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "1C70",
+        "2288",
+        "0000",
+        "1C70",
+        "0820",
+        "0000",
+        "0000",
+        "0380",
+        "0000"
+      ],
+      "given_grid": [
+        "················",
+        "···███···███····",
+        "··█···█·█···█···",
+        "················",
+        "···███···███····",
+        "····█·····█·····",
+        "················",
+        "················",
+        "······███·······",
+        "················"
+      ],
+      "expected_hex": [
+        "0000",
+        "1C70",
+        "2288",
+        "0000",
+        "1C70",
+        "0820",
+        "0000",
+        "0000",
+        "0380",
+        "0000"
+      ],
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "differing_rows": [
+        1,
+        2,
+        4,
+        5,
+        8
+      ],
+      "missing": false
+    }
+  ],
+  "totals": {
+    "requested": 2,
+    "returned": 2,
+    "well_formed": 2,
+    "measurable": 2,
+    "agreed": 0,
+    "input_tokens": 504,
+    "output_tokens": 110,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0,
+    "thinking_tokens": 0,
+    "duration_seconds": 1.91,
+    "agreement_rate": 0.0,
+    "prompt_tokens": 504,
+    "answer_tokens": 110
+  },
+  "schema_version": 2
+}
