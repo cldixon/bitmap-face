@@ -24,7 +24,7 @@ from enum import StrEnum
 from hashlib import sha1
 from typing import Any
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 class Target(StrEnum):
@@ -43,6 +43,20 @@ class Target(StrEnum):
     #: Transcription is deterministic on our side, so this has ground truth --
     #: it isolates encoding from composing.
     TRANSCRIBE = "transcribe"
+
+
+class ReferenceSet(StrEnum):
+    """Which corpus the in-prompt examples are drawn from."""
+
+    #: Nothing shown. The written spec has to carry it alone.
+    NONE = "none"
+    #: Real Happy Mac faces. Teaches encoding *and* house style -- and four of
+    #: the first six are also expressions we request, so copying is possible and
+    #: is measured rather than assumed away.
+    FACES = "faces"
+    #: Geometric patterns. Teaches the grid-to-hex correspondence with no face
+    #: to copy and no style to inherit.
+    SHAPES = "shapes"
 
 
 class Batch(StrEnum):
@@ -65,8 +79,13 @@ class Condition:
     model: str
     target: Target = Target.BOTH
     batch: Batch = Batch.ALL
-    #: ROM faces shown as few-shot examples. Zero is the blind control.
+    #: Examples shown in the prompt. Zero is the blind control.
     references: int = 6
+    reference_set: ReferenceSet = ReferenceSet.FACES
+    #: Tell the model in so many words not to reproduce the examples. Its own
+    #: axis rather than a default: the instruction is an intervention, and if it
+    #: is always on there is no way to see what it changed.
+    no_copy: bool = False
     #: When drawing one at a time, how many already-drawn faces to show, so a
     #: set can hold a consistent style. Zero makes the calls independent.
     context: int = 0
@@ -87,8 +106,11 @@ class Condition:
             self.model.removeprefix("claude-"),
             self.target.value,
             f"batch-{self.batch.value}",
-            f"ref{self.references}",
+            f"ref{self.references}"
+            + ("" if not self.references else f"-{self.reference_set.value}"),
         ]
+        if self.no_copy:
+            parts.append("nocopy")
         if self.context:
             parts.append(f"ctx{self.context}")
         if self.effort:
@@ -171,6 +193,9 @@ class Attempt:
     well_formed: bool = False
     #: None when the condition cannot produce an agreement (hex only, grid only).
     agrees: bool | None = None
+    #: Name of the in-prompt example this face reproduces exactly, if any.
+    #: Measured on every run, not only when the model was told not to.
+    copied: str | None = None
     differing_rows: list[int] = field(default_factory=list)
     missing: bool = False
 
@@ -221,8 +246,25 @@ class Totals:
 
 
 @dataclass
+class Suite:
+    """
+    A model swept across the four targets, repeated.
+
+    The suite is the unit of comparison: a single condition answers one question
+    about one target, and the interesting reading is across them -- can it draw
+    without the encoding burden, encode what it just drew, compose straight in
+    hex, and hold both at once.
+    """
+
+    id: str
+    label: str
+    targets: list[str]
+    repeats: int
+
+
+@dataclass
 class Run:
-    """A condition, run once."""
+    """A condition, run once. One cell of a suite, when it belongs to one."""
 
     id: str
     started_at: str
@@ -232,6 +274,7 @@ class Run:
     attempts: list[Attempt]
     totals: Totals
     prompts: Prompts | None = None
+    suite: Suite | None = None
     schema_version: int = SCHEMA_VERSION
 
     def to_json(self) -> dict[str, Any]:
@@ -239,6 +282,7 @@ class Run:
         # StrEnum survives asdict as the enum; make the wire format plain.
         data["condition"]["target"] = str(self.condition.target)
         data["condition"]["batch"] = str(self.condition.batch)
+        data["condition"]["reference_set"] = str(self.condition.reference_set)
         data["condition"]["slug"] = self.condition.slug
         # A tuple survives asdict but not a JSON round trip, and the panel
         # compares these against arrays.

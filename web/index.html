@@ -3,23 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>bitmap-face — control panel</title>
+<title>bitface</title>
 <link rel="stylesheet" href="/panel.css">
 </head>
 <body>
   <header class="bar">
-    <h1>bitmap-face</h1>
-    <label>Run
-      <select id="runs"></select>
-    </label>
-    <p id="params" class="params"></p>
+    <select id="view" aria-label="View">
+      <option value="suite">one suite · every expression</option>
+      <option value="compare">one expression · every suite</option>
+    </select>
+    <select id="suites" aria-label="Suite"></select>
+    <select id="expression" aria-label="Expression" hidden></select>
+    <select id="repeat" aria-label="Which repeat"></select>
+    <label class="check"><input type="checkbox" id="chassis"> chassis</label>
+    <span class="spacer"></span>
+    <select id="format" aria-label="Format">
+      <option value="png">PNG</option>
+      <option value="jpeg">JPEG</option>
+    </select>
+    <button id="save" type="button">export</button>
   </header>
-
-  <main>
-    <nav id="faces" class="faces" aria-label="Faces in this run"></nav>
-    <section id="detail" class="detail"></section>
-  </main>
-
+  <p id="config" class="config"></p>
+  <ul id="legend" class="legend"></ul>
+  <main id="sheet" class="sheet"></main>
+  <aside id="detail" class="detail" hidden></aside>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

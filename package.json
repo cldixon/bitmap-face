@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "panel": "bun run web/server.ts"
+    "panel": "bun run web/server.ts",
+    "test": "bun test web/"
   }
 }

@@ -1,0 +1,1 @@
+A face reads at this size only if it is built from a few heavy features with clear space around them -- eyes near the top, a mouth in the lower half. There is no room for shading, outlines, or detail smaller than a pixel.

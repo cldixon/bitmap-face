@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.122",
+    "jinja2>=3.1.6",
     "rich>=15.0.0",
     "typer>=0.27.2",
 ]
@@ -13,6 +14,12 @@ dependencies = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Templates are data, and the CLI is installed as a tool -- they have to travel
+# with the package or a `uv tool install` copy renders nothing.
+packages = ["bitmap_face"]
+artifacts = ["bitmap_face/templates/*.md"]
 
 [project.scripts]
 bitface = "bitmap_face.cli:app"

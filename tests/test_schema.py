@@ -2,7 +2,17 @@
 
 import json
 
-from bitmap_face.schema import Attempt, Batch, Call, Condition, Prompts, Run, Target, Totals
+from bitmap_face.schema import (
+    Attempt,
+    Batch,
+    Call,
+    Condition,
+    Prompts,
+    ReferenceSet,
+    Run,
+    Target,
+    Totals,
+)
 
 
 def condition(**kw) -> Condition:
@@ -10,10 +20,10 @@ def condition(**kw) -> Condition:
 
 
 def test_the_slug_names_the_cell_not_the_moment() -> None:
-    assert condition().slug == "opus-5-both-batch-all-ref6"
+    assert condition().slug == "opus-5-both-batch-all-ref6-faces"
     assert condition(target=Target.HEX_ONLY, references=0).slug == "opus-5-hex_only-batch-all-ref0"
-    assert condition(batch=Batch.ONE, context=2).slug == "opus-5-both-batch-one-ref6-ctx2"
-    assert condition(effort="max").slug == "opus-5-both-batch-all-ref6-max"
+    assert condition(batch=Batch.ONE, context=2).slug == "opus-5-both-batch-one-ref6-faces-ctx2"
+    assert condition(effort="max").slug == "opus-5-both-batch-all-ref6-faces-max"
 
 
 def test_conditions_are_hashable_so_repeats_can_be_grouped() -> None:
@@ -61,7 +71,7 @@ def test_a_run_serialises_to_plain_json() -> None:
     # Round trips through JSON with no custom encoder -- the panel reads this.
     assert json.loads(json.dumps(blob)) == blob
     assert blob["condition"]["target"] == "both"
-    assert blob["condition"]["slug"] == "opus-5-both-batch-all-ref6"
+    assert blob["condition"]["slug"] == "opus-5-both-batch-all-ref6-faces"
     assert blob["totals"]["agreement_rate"] == 1.0
     assert blob["schema_version"] >= 2
 
@@ -110,7 +120,7 @@ def test_two_different_subsets_of_the_same_size_stay_distinct() -> None:
     a = condition(expressions=("happy", "sad", "angry", "wink"))
     b = condition(expressions=("kiss", "smug", "yuck", "nerdy"))
     assert a.slug != b.slug
-    assert a.slug.startswith("opus-5-both-batch-all-ref6-e4-")
+    assert a.slug.startswith("opus-5-both-batch-all-ref6-faces-e4-")
 
 
 def test_subset_order_does_not_change_the_cell() -> None:
@@ -120,7 +130,7 @@ def test_subset_order_does_not_change_the_cell() -> None:
 
 
 def test_the_full_set_carries_no_tag() -> None:
-    assert condition().slug == "opus-5-both-batch-all-ref6"
+    assert condition().slug == "opus-5-both-batch-all-ref6-faces"
 
 
 def test_the_record_carries_what_was_actually_sent() -> None:
@@ -148,3 +158,26 @@ def test_the_record_carries_what_was_actually_sent() -> None:
     assert blob["prompts"]["response_schema"] == {"type": "object"}
     assert blob["calls"][0]["prompt"] == "draw a happy face"
     assert json.loads(json.dumps(blob)) == blob
+
+
+def test_the_reference_corpus_is_named_in_the_slug() -> None:
+    # "six examples" is not a condition; six faces and six shapes teach
+    # different things and must not be grouped as repeats of each other.
+    faces = condition(reference_set=ReferenceSet.FACES)
+    shapes = condition(reference_set=ReferenceSet.SHAPES)
+    assert faces.slug != shapes.slug
+    assert faces.slug.endswith("-faces") and shapes.slug.endswith("-shapes")
+
+
+def test_blind_needs_no_corpus_name() -> None:
+    # With nothing shown, which corpus it would have come from is meaningless.
+    assert condition(references=0).slug.endswith("-ref0")
+    assert (
+        condition(references=0, reference_set=ReferenceSet.SHAPES).slug
+        == condition(references=0, reference_set=ReferenceSet.FACES).slug
+    )
+
+
+def test_the_no_copy_directive_is_its_own_cell() -> None:
+    assert condition(no_copy=True).slug != condition().slug
+    assert "nocopy" in condition(no_copy=True).slug

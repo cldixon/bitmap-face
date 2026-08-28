@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
@@ -24,25 +23,10 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
+from bitmap_face.outcome import fault_kind as classify
+
 RUNS = Path(__file__).resolve().parent.parent / "data" / "runs"
 INDEX = Path(__file__).resolve().parent.parent / "data" / "index.json"
-
-# Fault strings are written for a person reading the terminal; these fold them
-# into countable kinds so a run can be characterised without reading them all.
-FAULT_KINDS: list[tuple[str, str]] = [
-    (r"^grid row \d+ is \d+ wide", "grid_row_width"),
-    (r"^grid row \d+ uses", "grid_stray_character"),
-    (r"^hex row \d+ is", "hex_row_malformed"),
-    (r"^\d+ grid rows, expected", "grid_row_count"),
-    (r"^\d+ hex rows, expected", "hex_row_count"),
-]
-
-
-def classify(fault: str) -> str:
-    for pattern, kind in FAULT_KINDS:
-        if re.match(pattern, fault):
-            return kind
-    return "other"
 
 
 def summarise(path: Path) -> dict[str, Any]:

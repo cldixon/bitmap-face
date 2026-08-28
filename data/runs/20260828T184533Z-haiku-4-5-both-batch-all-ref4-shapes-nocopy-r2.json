@@ -1,0 +1,794 @@
+{
+  "id": "20260828T184533Z-haiku-4-5-both-batch-all-ref4-shapes-nocopy-r2",
+  "started_at": "2026-08-28T18:45:33.178798+00:00",
+  "condition": {
+    "model": "claude-haiku-4-5",
+    "target": "both",
+    "batch": "all",
+    "references": 4,
+    "reference_set": "shapes",
+    "no_copy": true,
+    "context": 0,
+    "effort": null,
+    "width": 16,
+    "height": 10,
+    "expressions": [],
+    "slug": "haiku-4-5-both-batch-all-ref4-shapes-nocopy"
+  },
+  "repeat": 2,
+  "calls": [
+    {
+      "index": 0,
+      "expressions": [
+        "happy",
+        "sad",
+        "surprised",
+        "angry",
+        "sleepy",
+        "wink",
+        "yuck",
+        "kiss",
+        "confused",
+        "smug",
+        "sunglasses",
+        "nerdy"
+      ],
+      "duration_seconds": 12.09,
+      "input_tokens": 1130,
+      "output_tokens": 1478,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "thinking_tokens": 0,
+      "stop_reason": "end_turn",
+      "prompt": "Here are patterns in both forms, so you can see how a grid is written as hex:\n\nframe\n████████████████  FFFF\n█··············█  8001\n█··············█  8001\n█··············█  8001\n█··············█  8001\n█··············█  8001\n█··············█  8001\n█··············█  8001\n█··············█  8001\n████████████████  FFFF\n\nchecker\n██··██··██··██··  CCCC\n██··██··██··██··  CCCC\n··██··██··██··██  3333\n··██··██··██··██  3333\n██··██··██··██··  CCCC\n██··██··██··██··  CCCC\n··██··██··██··██  3333\n··██··██··██··██  3333\n██··██··██··██··  CCCC\n██··██··██··██··  CCCC\n\ndiagonal\n██··············  C000\n·██·············  6000\n···██···········  1800\n····███·········  0E00\n······██········  0300\n·······███······  01C0\n·········██·····  0060\n···········██···  0018\n············███·  000E\n··············██  0003\n\nwedge\n················  0000\n██··············  C000\n████············  F000\n█████···········  F800\n███████·········  FE00\n████████········  FF00\n██████████······  FFC0\n████████████····  FFF0\n█████████████···  FFF8\n███████████████·  FFFE\n\nDo not reproduce any example above. Draw each face yourself, in that style but not copied from it.\n\nDraw these 12 faces:\n\n- happy: smiling, content\n- sad: downturned mouth, dejected\n- surprised: wide eyes, open mouth\n- angry: brows drawn down and inward, tight mouth\n- sleepy: eyes closed or half shut, drowsy\n- wink: one eye shut, the other open, playful\n- yuck: disgusted, tongue out\n- kiss: lips pursed forward\n- confused: asymmetric, uncertain, one brow raised\n- smug: self-satisfied, a small one-sided smile\n- sunglasses: wearing dark glasses across both eyes\n- nerdy: wearing round spectacles",
+      "prompt_tokens": 1130
+    }
+  ],
+  "attempts": [
+    {
+      "expression": "happy",
+      "tier": "easy",
+      "grid": [
+        "················",
+        "··██··██········",
+        "·█··█·█··█······",
+        "·█··█·█··█······",
+        "··██··██········",
+        "················",
+        "················",
+        "······████······",
+        "····██··██······",
+        "····██··██······"
+      ],
+      "hex": [
+        "0000",
+        "3300",
+        "9900",
+        "9900",
+        "3300",
+        "0000",
+        "0000",
+        "0F00",
+        "3300",
+        "3300"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "3300",
+        "4A40",
+        "4A40",
+        "3300",
+        "0000",
+        "0000",
+        "03C0",
+        "0CC0",
+        "0CC0"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        2,
+        3,
+        7,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "sad",
+      "tier": "easy",
+      "grid": [
+        "················",
+        "··██··██········",
+        "·█··█·█··█······",
+        "·█··█·█··█······",
+        "··██··██········",
+        "················",
+        "················",
+        "····██··██······",
+        "······████······",
+        "········████····"
+      ],
+      "hex": [
+        "0000",
+        "3300",
+        "9900",
+        "9900",
+        "3300",
+        "0000",
+        "0000",
+        "3300",
+        "0F00",
+        "00F0"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "3300",
+        "4A40",
+        "4A40",
+        "3300",
+        "0000",
+        "0000",
+        "0CC0",
+        "03C0",
+        "00F0"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        2,
+        3,
+        7,
+        8
+      ],
+      "missing": false
+    },
+    {
+      "expression": "surprised",
+      "tier": "easy",
+      "grid": [
+        "················",
+        "·███··███·······",
+        "█···█·█···█·····",
+        "█···█·█···█·····",
+        "·███··███·······",
+        "················",
+        "················",
+        "········██······",
+        "······██··██····",
+        "······██████····"
+      ],
+      "hex": [
+        "0000",
+        "7700",
+        "B900",
+        "B900",
+        "7700",
+        "0000",
+        "0000",
+        "0180",
+        "0660",
+        "0FC0"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "7380",
+        "8A20",
+        "8A20",
+        "7380",
+        "0000",
+        "0000",
+        "00C0",
+        "0330",
+        "03F0"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        1,
+        2,
+        3,
+        4,
+        7,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "angry",
+      "tier": "medium",
+      "grid": [
+        "················",
+        "··················",
+        "█·····█··········",
+        "·█···█···········",
+        "··███············",
+        "················",
+        "················",
+        "····████████····",
+        "····██······██··",
+        "····██······██··"
+      ],
+      "hex": [
+        "0000",
+        "0000",
+        "8100",
+        "6000",
+        "3C00",
+        "0000",
+        "0000",
+        "0FF0",
+        "3003",
+        "3003"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "0000",
+        "8200",
+        "4400",
+        "3800",
+        "0000",
+        "0000",
+        "0FF0",
+        "0C0C",
+        "0C0C"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [
+        "grid row 1 is 18 wide: '··················'",
+        "grid row 2 is 17 wide: '█·····█··········'",
+        "grid row 3 is 17 wide: '·█···█···········'",
+        "grid row 4 is 17 wide: '··███············'"
+      ],
+      "well_formed": false,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        2,
+        3,
+        4,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "sleepy",
+      "tier": "medium",
+      "grid": [
+        "················",
+        "··████··········",
+        "·██··██·········",
+        "██····██········",
+        "··████··········",
+        "················",
+        "················",
+        "····██████······",
+        "····██···██·····",
+        "····██···██·····"
+      ],
+      "hex": [
+        "0000",
+        "0F00",
+        "3300",
+        "C300",
+        "0F00",
+        "0000",
+        "0000",
+        "03F0",
+        "1860",
+        "1860"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "3C00",
+        "6600",
+        "C300",
+        "3C00",
+        "0000",
+        "0000",
+        "0FC0",
+        "0C60",
+        "0C60"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        1,
+        2,
+        4,
+        7,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "wink",
+      "tier": "medium",
+      "grid": [
+        "················",
+        "··████··██······",
+        "·██··█··█··█····",
+        "██···██·█··█····",
+        "··███··████·····",
+        "················",
+        "················",
+        "····██████······",
+        "····██···██·····",
+        "····██···██·····"
+      ],
+      "hex": [
+        "0000",
+        "0F33",
+        "9B99",
+        "C3B9",
+        "3CF8",
+        "0000",
+        "0000",
+        "03F0",
+        "1860",
+        "1860"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "3CC0",
+        "6490",
+        "C690",
+        "39E0",
+        "0000",
+        "0000",
+        "0FC0",
+        "0C60",
+        "0C60"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        1,
+        2,
+        3,
+        4,
+        7,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "yuck",
+      "tier": "medium",
+      "grid": [
+        "················",
+        "··██··██········",
+        "·█··█·█··█······",
+        "·█··█·█··█······",
+        "··██··██········",
+        "········█·······",
+        "······██████····",
+        "····░░░░░░░░····",
+        "····░░····░░····",
+        "····░░░░░░░░····"
+      ],
+      "hex": [
+        "0000",
+        "3300",
+        "9900",
+        "9900",
+        "3300",
+        "0100",
+        "0FC0",
+        "0FF0",
+        "1860",
+        "0FF0"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "3300",
+        "4A40",
+        "4A40",
+        "3300",
+        "0080",
+        "03F0",
+        "0000",
+        "0000",
+        "0000"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [
+        "grid row 7 uses '░'",
+        "grid row 8 uses '░'",
+        "grid row 9 uses '░'"
+      ],
+      "well_formed": false,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "kiss",
+      "tier": "hard",
+      "grid": [
+        "················",
+        "··██··██········",
+        "·█··█·█··█······",
+        "·█··█·█··█······",
+        "··██··██········",
+        "················",
+        "······████······",
+        "······████······",
+        "····██████······",
+        "················"
+      ],
+      "hex": [
+        "0000",
+        "3300",
+        "9900",
+        "9900",
+        "3300",
+        "0000",
+        "0F00",
+        "0F00",
+        "03C0",
+        "0000"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "3300",
+        "4A40",
+        "4A40",
+        "3300",
+        "0000",
+        "03C0",
+        "03C0",
+        "0FC0",
+        "0000"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        2,
+        3,
+        6,
+        7,
+        8
+      ],
+      "missing": false
+    },
+    {
+      "expression": "confused",
+      "tier": "hard",
+      "grid": [
+        "················",
+        "·██·····██······",
+        "█··█···█··█·····",
+        "█··█···█··█·····",
+        "·██·····██······",
+        "█··············",
+        "····██┌┌░░······",
+        "····██·███······",
+        "····██·██░······",
+        "········░░······"
+      ],
+      "hex": [
+        "0000",
+        "3800",
+        "9000",
+        "9000",
+        "3000",
+        "8000",
+        "0C00",
+        "0E00",
+        "0C80",
+        "0080"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "60C0",
+        "9120",
+        "9120",
+        "60C0",
+        "8000",
+        "0C00",
+        "0DC0",
+        "0D80",
+        "0000"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [
+        "grid row 5 is 15 wide: '█··············'",
+        "grid row 6 uses '┌░'",
+        "grid row 8 uses '░'",
+        "grid row 9 uses '░'"
+      ],
+      "well_formed": false,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        1,
+        2,
+        3,
+        4,
+        7,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "smug",
+      "tier": "hard",
+      "grid": [
+        "················",
+        "··██··██········",
+        "·█··█·█··█······",
+        "·█··█·█··█······",
+        "··██··██········",
+        "················",
+        "················",
+        "····████········",
+        "····██··██······",
+        "····██████······"
+      ],
+      "hex": [
+        "0000",
+        "3300",
+        "9900",
+        "9900",
+        "3300",
+        "0000",
+        "0000",
+        "00F0",
+        "1860",
+        "03C0"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "3300",
+        "4A40",
+        "4A40",
+        "3300",
+        "0000",
+        "0000",
+        "0F00",
+        "0CC0",
+        "0FC0"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        2,
+        3,
+        7,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "sunglasses",
+      "tier": "prop",
+      "grid": [
+        "················",
+        "█████··█████····",
+        "█···█··█···█····",
+        "█···█··█···█····",
+        "█████··█████····",
+        "················",
+        "················",
+        "····████████····",
+        "····██····██····",
+        "····██····██····"
+      ],
+      "hex": [
+        "0000",
+        "F8F0",
+        "9090",
+        "9090",
+        "F8F0",
+        "0000",
+        "0000",
+        "0FF0",
+        "3030",
+        "3030"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "F9F0",
+        "8910",
+        "8910",
+        "F9F0",
+        "0000",
+        "0000",
+        "0FF0",
+        "0C30",
+        "0C30"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        1,
+        2,
+        3,
+        4,
+        8,
+        9
+      ],
+      "missing": false
+    },
+    {
+      "expression": "nerdy",
+      "tier": "prop",
+      "grid": [
+        "················",
+        "·███··████······",
+        "█···█·█····█····",
+        "█···█·█····█····",
+        "·███··████······",
+        "··█········█····",
+        "················",
+        "····██████······",
+        "····██··██······",
+        "····██··██······"
+      ],
+      "hex": [
+        "0000",
+        "3F00",
+        "9100",
+        "9100",
+        "3F00",
+        "0400",
+        "0000",
+        "0FC0",
+        "3030",
+        "3030"
+      ],
+      "hex_from_grid": [
+        "0000",
+        "73C0",
+        "8A10",
+        "8A10",
+        "73C0",
+        "2010",
+        "0000",
+        "0FC0",
+        "0CC0",
+        "0CC0"
+      ],
+      "given_grid": null,
+      "expected_hex": null,
+      "faults": [],
+      "well_formed": true,
+      "agrees": false,
+      "copied": null,
+      "differing_rows": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        8,
+        9
+      ],
+      "missing": false
+    }
+  ],
+  "totals": {
+    "requested": 12,
+    "returned": 12,
+    "well_formed": 9,
+    "measurable": 12,
+    "agreed": 0,
+    "input_tokens": 1130,
+    "output_tokens": 1478,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0,
+    "thinking_tokens": 0,
+    "duration_seconds": 12.09,
+    "agreement_rate": 0.0,
+    "prompt_tokens": 1130,
+    "answer_tokens": 1478
+  },
+  "prompts": {
+    "system": "You draw 1-bit icons for the original Macintosh, in the exact format its ROM stored them.\n\nEvery icon is a face: 16 pixels wide and 10 pixels tall, meant to sit inside the screen of a Happy Mac.\n\nYou give each face in two forms, and they must describe the same pixels.\n\n1. \"grid\" -- 10 strings of exactly 16 characters. \"█\" is a set pixel, \"·\" is an empty one.\n2. \"hex\" -- 10 strings of exactly 4 hex digits. Each row is 16 bits, most significant bit leftmost, so the first digit is the leftmost four pixels of that row.\n\nDraw the grid first, then read the hex off it row by row.\n\nA face reads at this size only if it is built from a few heavy features with clear space around them -- eyes near the top, a mouth in the lower half. There is no room for shading, outlines, or detail smaller than a pixel.",
+    "response_schema": {
+      "type": "object",
+      "properties": {
+        "faces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "expression": {
+                "type": "string",
+                "description": "The expression this face is."
+              },
+              "grid": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "10 rows of 16 characters, █ and ·"
+              },
+              "hex": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "10 rows of 4 hex digits"
+              }
+            },
+            "required": [
+              "expression",
+              "grid",
+              "hex"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "faces"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "suite": {
+    "id": "20260828T184518Z-haiku-4-5",
+    "label": "haiku-4-5 · 4 shapes refs",
+    "targets": [
+      "grid_only",
+      "transcribe",
+      "hex_only",
+      "both"
+    ],
+    "repeats": 2
+  },
+  "schema_version": 4
+}

@@ -11,8 +11,10 @@ bitface — experiments in whether a language model can work in a 1-bit bitmap.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
 from typing import Annotated
@@ -33,8 +35,10 @@ from rich.table import Table
 from bitmap_face.expressions import EXPRESSIONS, resolve
 from bitmap_face.bitmap import bits_from_grid, bits_from_hex
 from bitmap_face.chassis import compose
+from bitmap_face.outcome import classify as outcome
+from bitmap_face.outcome import note
 from bitmap_face.run import DRAFTS, run_condition, save
-from bitmap_face.schema import Attempt, Batch, Condition, Run, Target
+from bitmap_face.schema import Attempt, Batch, Condition, ReferenceSet, Run, Suite, Target
 
 app = typer.Typer(
     help=__doc__,
@@ -53,32 +57,6 @@ MARKS = {
     "missing": ("[dim]·[/]", "dim"),
     "drawn": ("[cyan]•[/]", "cyan"),
 }
-
-
-def outcome(a: Attempt) -> str:
-    if a.missing:
-        return "missing"
-    if not a.well_formed:
-        return "malformed"
-    if a.agrees is True:
-        return "agrees"
-    if a.agrees is False:
-        return "differs"
-    return "drawn"
-
-
-def note(a: Attempt) -> str:
-    if a.missing:
-        return "never came back"
-    if not a.well_formed:
-        return f"{len(a.faults)} fault{'s' if len(a.faults) != 1 else ''}: {a.faults[0]}"
-    if a.agrees is False:
-        n = len(a.differing_rows)
-        verb = "row differs" if n == 1 else "rows differ"
-        return f"{n} {verb} — {', '.join(map(str, a.differing_rows))}"
-    if a.agrees is None:
-        return "one form only"
-    return ""
 
 
 def blocks(bitmap: list[list[int]]) -> list[str]:
@@ -192,6 +170,13 @@ BatchOpt = Annotated[Batch, typer.Option("--batch", help="One call for the set, 
 RefsOpt = Annotated[
     int, typer.Option("--references", "-r", help="ROM examples; 0 is the blind control.")
 ]
+SetOpt = Annotated[
+    ReferenceSet,
+    typer.Option("--reference-set", help="Which corpus the examples come from."),
+]
+NoCopyOpt = Annotated[
+    bool, typer.Option("--no-copy", help="Tell the model not to reproduce the examples.")
+]
 CtxOpt = Annotated[
     int, typer.Option("--context", help="Prior faces shown; forces sequential calls.")
 ]
@@ -199,7 +184,18 @@ EffortOpt = Annotated[str | None, typer.Option("--effort", help="low…max; unav
 MaxTokOpt = Annotated[int, typer.Option("--max-tokens", help="Ceiling on thinking plus output.")]
 
 
-def build(model, target, batch, references, context, effort, names=None) -> Condition:
+def build(
+    model,
+    target,
+    batch,
+    references,
+    context,
+    effort,
+    names=None,
+    *,
+    reference_set=ReferenceSet.FACES,
+    no_copy=False,
+) -> Condition:
     """
     Assemble the cell.
 
@@ -219,6 +215,8 @@ def build(model, target, batch, references, context, effort, names=None) -> Cond
         context=context,
         effort=effort,
         expressions=wanted,
+        reference_set=reference_set,
+        no_copy=no_copy,
     )
 
 
@@ -231,6 +229,9 @@ def execute_and_report(
     *,
     into: Path | None = None,
     render: bool = False,
+    source_grids: dict[int, dict[str, list[str]]] | None = None,
+    suite: Suite | None = None,
+    quiet: bool = False,
 ) -> list[Run]:
     """Run a condition with a live progress display, then summarise."""
     wanted = resolve(names)
@@ -285,6 +286,8 @@ def execute_and_report(
             max_tokens=max_tokens,
             concurrency=concurrency,
             on_attempt=on_attempt,
+            source_grids=source_grids,
+            suite=suite,
         )
 
     if render:
@@ -294,7 +297,8 @@ def execute_and_report(
                 console.print(f"\n{mark} [bold]{attempt.expression}[/] [dim]{attempt.tier}[/]")
                 show(attempt, condition)
 
-    summarise(runs)
+    if not quiet:
+        summarise(runs)
     # Relative, and never wrapped: a wrapped path cannot be copied.
     for run in runs:
         console.print(
@@ -374,6 +378,8 @@ def draw(
     target: TargetOpt = Target.BOTH,
     batch: BatchOpt = Batch.ALL,
     references: RefsOpt = 6,
+    reference_set: SetOpt = ReferenceSet.FACES,
+    no_copy: NoCopyOpt = False,
     context: CtxOpt = 0,
     effort: EffortOpt = None,
     max_tokens: MaxTokOpt = 48000,
@@ -381,7 +387,17 @@ def draw(
     """One expression, one call. The atomic unit — reach for this first."""
     names = expression or ["happy"]
     execute_and_report(
-        build(model, target, batch, references, context, effort, names),
+        build(
+            model,
+            target,
+            batch,
+            references,
+            context,
+            effort,
+            names,
+            reference_set=reference_set,
+            no_copy=no_copy,
+        ),
         names,
         repeats=1,
         concurrency=1,
@@ -398,6 +414,8 @@ def run(
     target: TargetOpt = Target.BOTH,
     batch: BatchOpt = Batch.ALL,
     references: RefsOpt = 6,
+    reference_set: SetOpt = ReferenceSet.FACES,
+    no_copy: NoCopyOpt = False,
     context: CtxOpt = 0,
     effort: EffortOpt = None,
     max_tokens: MaxTokOpt = 48000,
@@ -410,7 +428,17 @@ def run(
 ) -> None:
     """The whole expression set, optionally repeated."""
     execute_and_report(
-        build(model, target, batch, references, context, effort, expression),
+        build(
+            model,
+            target,
+            batch,
+            references,
+            context,
+            effort,
+            expression,
+            reference_set=reference_set,
+            no_copy=no_copy,
+        ),
         expression,
         repeats=repeats,
         concurrency=concurrency,
@@ -439,7 +467,7 @@ def panel(
         subprocess.run(
             ["bun", "run", "web/server.ts"],
             cwd=ROOT,
-            env={**__import__("os").environ, "PORT": str(port)},
+            env={**os.environ, "PORT": str(port)},
             check=True,
         )
     except FileNotFoundError:
@@ -447,6 +475,136 @@ def panel(
         raise typer.Exit(1) from None
     except KeyboardInterrupt:
         console.print("\n[dim]stopped[/]")
+
+
+@app.command()
+def suite(
+    model: ModelOpt = "claude-haiku-4-5",
+    effort: EffortOpt = None,
+    references: RefsOpt = 0,
+    reference_set: SetOpt = ReferenceSet.SHAPES,
+    no_copy: NoCopyOpt = False,
+    batch: BatchOpt = Batch.ALL,
+    repeats: Annotated[
+        int, typer.Option("--repeats", "-n", help="Independent runs per target.")
+    ] = 3,
+    concurrency: Annotated[int, typer.Option("--concurrency", "-c")] = 4,
+    max_tokens: MaxTokOpt = 48000,
+) -> None:
+    """
+    One model, swept across all four targets. The unit of comparison.
+
+    The targets chain on the same expression: draw it with no encoding burden,
+    then encode that exact grid, then compose straight in hex, then do both at
+    once. So grid_only runs first and its output becomes what transcribe is
+    asked to encode -- the question is "can you encode the thing you just drew",
+    not "can you encode a face somebody else drew".
+    """
+    started = datetime.now(UTC)
+    suite_id = f"{started.strftime('%Y%m%dT%H%M%SZ')}-{model.removeprefix('claude-')}"
+    order = [Target.GRID_ONLY, Target.TRANSCRIBE, Target.HEX_ONLY, Target.BOTH]
+    meta = Suite(
+        id=suite_id,
+        label=f"{model.removeprefix('claude-')} · {references or 'no'} {reference_set.value if references else ''} refs".strip(),
+        targets=[str(t) for t in order],
+        repeats=repeats,
+    )
+
+    console.print(f"[bold]suite {suite_id}[/]  ·  {len(order)} targets × {repeats} repeats\n")
+
+    #: grid_only's drawings, per repeat, are what transcribe is handed.
+    source_grids: dict[int, dict[str, list[str]]] = {}
+    collected: list[Run] = []
+
+    for target in order:
+        condition = build(
+            model,
+            target,
+            batch,
+            references,
+            0,
+            effort,
+            reference_set=reference_set,
+            no_copy=no_copy,
+        )
+        console.rule(f"[bold]{target.value}[/]", style="dim")
+        if target is Target.TRANSCRIBE and not any(source_grids.values()):
+            #: Nothing was drawn well enough to hand back, so there is no grid to
+            #: ask about. Sending the prompt anyway would spend a call on "encode
+            #: the following grids:" followed by nothing, and record the shrug as
+            #: data. That the model never got this far is the finding.
+            console.print(
+                "[yellow]skipped:[/] no well formed grid came out of grid_only, "
+                "so there is nothing of the model's own to encode."
+            )
+            continue
+        runs = execute_and_report(
+            condition,
+            None,
+            repeats,
+            concurrency,
+            max_tokens,
+            source_grids=source_grids if target is Target.TRANSCRIBE else None,
+            suite=meta,
+        )
+        collected.extend(runs)
+
+        if target is Target.TRANSCRIBE:
+            #: The whole point of this cell is that the model encodes its own
+            #: drawing. A grid from anywhere else means the chain broke, and the
+            #: number it produces would answer a different question -- so say so
+            #: rather than let it read as a result.
+            mine = {tuple(g) for per_repeat in source_grids.values() for g in per_repeat.values()}
+            given = [a.given_grid for r in runs for a in r.attempts if a.given_grid]
+            foreign = [g for g in given if tuple(g) not in mine]
+            if foreign or not given:
+                console.print(
+                    f"[bold red]chain broken:[/] {len(foreign)}/{len(given)} transcribed grids "
+                    "did not come from this suite's grid_only pass."
+                )
+            else:
+                console.print(f"[dim]chain intact: all {len(given)} grids are the model's own.[/]")
+
+        if target is Target.GRID_ONLY:
+            for run in runs:
+                source_grids[run.repeat] = {
+                    a.expression: a.grid for a in run.attempts if a.grid and a.well_formed
+                }
+            #: transcribe can only ask about faces that came out well formed, so a
+            #: weak grid_only pass narrows it. Say so rather than let the smaller
+            #: denominator read as a smaller sample.
+            carried = sum(len(g) for g in source_grids.values())
+            asked = sum(len(r.attempts) for r in runs)
+            if carried < asked:
+                console.print(
+                    f"[yellow]{carried}/{asked} grids were well formed; "
+                    f"transcribe runs on those only.[/]"
+                )
+
+    console.print()
+    console.rule("[bold]suite[/]", style="dim")
+    table = Table(box=None, pad_edge=False, header_style="dim")
+    for name in ("target", "formed", "agreed", "rate", "copied", "output", "elapsed"):
+        table.add_column(name, justify="right" if name != "target" else "left")
+    for target in order:
+        runs = [r for r in collected if r.condition.target is target]
+        t = [r.totals for r in runs]
+        rates = [x.agreement_rate for x in t if x.agreement_rate is not None]
+        copies = sum(1 for r in runs for a in r.attempts if a.copied)
+        table.add_row(
+            target.value,
+            f"{sum(x.well_formed for x in t)}/{sum(x.returned for x in t)}",
+            f"{sum(x.agreed for x in t)}/{sum(x.measurable for x in t)}"
+            if any(x.measurable for x in t)
+            else "—",
+            f"{sum(rates) / len(rates):.0%}" if rates else "—",
+            str(copies) if references else "—",
+            f"{sum(x.output_tokens for x in t):,}",
+            f"{sum(x.duration_seconds for x in t):.0f}s",
+        )
+    console.print(table)
+    console.print(f"\n[dim]{len(collected)} runs · suite {suite_id}[/]")
+    console.print("[dim]transcribe is chained to this suite's own grid_only output.[/]")
 
 
 if __name__ == "__main__":

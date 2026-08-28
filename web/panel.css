@@ -1,99 +1,98 @@
+/*
+ * Barebones on purpose: the subject is 1-bit icons, and a control panel around
+ * them should not out-decorate them.
+ */
 :root {
   --bg: #faf7f2;
-  --panel: #f0ede8;
   --fg: #282828;
-  --fg2: #504945;
-  --fg3: #6b6866;
-  --fg4: #857f79;
-  --line: rgba(150,150,150,0.32);
+  --fg2: #6b6866;
+  --line: rgba(150,150,150,0.3);
   --red: #ad2111;
-  --green: #3f7d20;
+  --amber: #9a6b12;
+  --green: #3f6b2f;
   --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-  --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg:#1c1b19; --panel:#262522; --fg:#e8e4df; --fg2:#c4bfb8; --fg3:#a09a94;
-          --fg4:#8a8580; --line:rgba(140,140,130,0.3); --red:#e07a6e; --green:#9cc355; }
+  :root { --bg:#1c1b19; --fg:#e8e4df; --fg2:#a09a94; --line:rgba(140,140,130,0.28);
+          --red:#e07a6e; --amber:#d9a441; --green:#8fbf6f; }
 }
 * { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--fg); font-family:var(--sans); font-size:14px; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--mono); font-size: 13px; }
 
-.bar { display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap;
-       padding:0.75rem 1.25rem; border-bottom:1px solid var(--line); }
-.bar h1 { margin:0; font-size:14px; font-weight:600; letter-spacing:0.02em; }
-.bar label { display:flex; align-items:center; gap:0.5rem; font-size:12px; color:var(--fg3); }
-select { font:inherit; font-family:var(--mono); font-size:12px; padding:0.35rem 0.5rem;
-         background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:4px; }
-.params { margin:0; font-family:var(--mono); font-size:12px; color:var(--fg4); }
+.bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+       padding: 0.85rem 1.5rem; border-bottom: 1px solid var(--line); }
+.bar .spacer { flex: 1; }
+select, .bar button { font: inherit; padding: 0.3rem 0.45rem; background: transparent; color: inherit;
+         border: 1px solid var(--line); border-radius: 3px; }
+.bar button { padding: 0.3rem 0.8rem; cursor: pointer; }
+.bar button:hover { border-color: var(--fg2); }
+.check { display: flex; align-items: center; gap: 0.4rem; color: var(--fg2); user-select: none; }
 
-main { display:grid; grid-template-columns:15rem 1fr; align-items:start; }
-@media (max-width: 800px) { main { grid-template-columns:1fr; } }
+/* The configuration, spelled out. Every number in the sheet is conditional on
+   it, so it is stated once, in words, rather than encoded in the slug. */
+.config { margin: 0; padding: 0.7rem 1.5rem; color: var(--fg2);
+          border-bottom: 1px solid var(--line); }
 
-.faces { border-right:1px solid var(--line); min-height:calc(100vh - 52px); padding:0.5rem; }
-.faces button { display:flex; align-items:center; gap:0.6rem; width:100%; text-align:left;
-  font:inherit; padding:0.4rem 0.5rem; margin-bottom:2px; background:none; color:var(--fg2);
-  border:1px solid transparent; border-radius:4px; cursor:pointer; }
-.faces button:hover { background:var(--panel); }
-.faces button[aria-current="true"] { background:var(--panel); border-color:var(--line); color:var(--fg); }
-.faces svg { display:block; color:var(--fg); background:var(--bg); border:1px solid var(--line); }
-.faces .name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dot { width:7px; height:7px; border-radius:50%; flex:none; }
-.dot.agrees { background:var(--green); }
-.dot.differs, .dot.malformed { background:var(--red); }
+/* The sheet: expressions down, the ways of asking across. */
+.sheet { padding: 1.5rem; overflow-x: auto; }
+.sheet table { border-collapse: collapse; margin: 0 auto; }
+.sheet th, .sheet td { padding: 0.4rem 0.7rem; text-align: center; vertical-align: middle; }
+.sheet thead th { border-bottom: 1px solid var(--line); padding-bottom: 0.6rem; }
+.sheet .target { display: block; }
+.sheet .blurb { display: block; font-size: 11px; color: var(--fg2); font-weight: normal; }
+.rowhead { text-align: right; font-weight: normal; white-space: nowrap; }
+.rowhead .tier { display: block; font-size: 11px; color: var(--fg2); }
+.cell { white-space: nowrap; }
 
-.detail { padding:1.25rem; }
-.detail h2 { margin:0 0 0.15rem; font-size:18px; font-weight:600; }
-.verdict { margin:0 0 1.25rem; font-family:var(--mono); font-size:12px; }
-.verdict.agrees { color:var(--green); }
-.verdict.differs, .verdict.malformed { color:var(--red); }
+.face { background: none; border: 1px solid transparent; border-radius: 3px; padding: 3px;
+        font: inherit; color: var(--fg); cursor: pointer; line-height: 0; }
+.face + .face { margin-left: 0.3rem; }
+.face:hover { border-color: var(--fg2); }
+.face svg { display: block; color: inherit; }
 
-.views { display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
-.view { display:flex; flex-direction:column; gap:0.4rem; }
-.view span { font-size:11px; color:var(--fg4); text-transform:uppercase; letter-spacing:0.06em; }
-.view svg { display:block; color:var(--fg); background:var(--bg); border:1px solid var(--line); }
-.band { fill:var(--red); opacity:0.22; }
+/* Outcome colours the face itself, so the state is legible without a legend
+   and without a badge crowding a 16-pixel icon. Only the two failures are
+   coloured -- marking success too would make the sheet a traffic light. */
+.face[data-outcome="malformed"] { color: var(--amber); }
+.face[data-outcome="differs"] { color: var(--red); }
+.face[data-outcome="missing"] { opacity: 0.35; }
+.void { color: var(--fg2); opacity: 0.5; }
 
-table { border-collapse:collapse; font-family:var(--mono); font-size:12px; }
-th { text-align:left; font-weight:500; color:var(--fg4); padding:0 0.75rem 0.35rem 0; font-size:11px;
-     text-transform:uppercase; letter-spacing:0.05em; }
-td { padding:0.1rem 0.75rem 0.1rem 0; color:var(--fg2); white-space:pre; }
-tr[data-differs="true"] td { color:var(--red); }
-tr[data-differs="true"] .want { font-weight:600; }
+/* The banded rows on a disagreement: where its own two forms contradict. */
+svg .band { fill: var(--red); opacity: 0.18; }
 
-.faults { margin:1.25rem 0 0; padding:0.6rem 0.8rem; background:var(--panel);
-          border-left:2px solid var(--red); border-radius:3px; }
-.faults li { font-family:var(--mono); font-size:12px; color:var(--fg2); }
-.empty { color:var(--fg4); font-family:var(--mono); font-size:12px; }
+.empty { padding: 2rem 1.5rem; color: var(--fg2); }
 
-.dot.drawn { background: var(--fg4); }
-.dot.missing { background: var(--fg4); opacity: 0.4; }
-.verdict.drawn, .verdict.missing { color: var(--fg4); }
-.tier { font-size: 11px; font-weight: 400; color: var(--fg4); text-transform: uppercase;
-        letter-spacing: 0.06em; margin-left: 0.4rem; }
+.detail { padding: 1.25rem 1.5rem 2.5rem; border-top: 1px solid var(--line); position: relative; }
+.detail h3 { margin: 0 0 0.3rem; font-size: 15px; }
+.detail .dim { color: var(--fg2); font-weight: normal; font-size: 13px; }
+.detail .close { position: absolute; top: 1rem; right: 1.5rem; background: none; border: 0;
+                 font: inherit; font-size: 20px; color: var(--fg2); cursor: pointer; line-height: 1; }
+.detail .outcome { margin: 0 0 1rem; color: var(--fg2); }
+.detail .outcome[data-outcome="differs"] { color: var(--red); }
+.detail .outcome[data-outcome="malformed"] { color: var(--amber); }
+.detail .outcome[data-outcome="agrees"] { color: var(--green); }
+.detail .warn { color: var(--amber); margin: 0 0 1rem; }
+.panes { display: flex; flex-wrap: wrap; gap: 2rem; margin-bottom: 1.25rem; }
+.panes figure { margin: 0; }
+.panes figcaption { margin-top: 0.5rem; font-size: 11px; color: var(--fg2); }
+.detail h4 { margin: 1.25rem 0 0.4rem; font-size: 12px; color: var(--fg2); font-weight: normal; }
+.detail pre { margin: 0; white-space: pre; overflow-x: auto; line-height: 1.35; }
+.detail ul { margin: 0; padding-left: 1.2rem; color: var(--red); }
+.detail details { margin-top: 1.5rem; }
+.detail summary { cursor: pointer; color: var(--fg2); }
+.detail details pre { margin-top: 0.75rem; white-space: pre-wrap; color: var(--fg2); }
 
-.marks { display:flex; gap:1px; font-family:var(--mono); font-size:11px; }
-.m { font-style:normal; }
-.m.agrees { color:var(--green); }
-.m.differs, .m.malformed { color:var(--red); }
-.m.missing, .m.drawn { color:var(--fg4); }
-.score { font-family:var(--mono); font-size:11px; color:var(--fg4); }
-
-.repeat { padding:0.9rem 0 1.1rem; border-top:1px solid var(--line); }
-.repeat:first-of-type { border-top:none; }
-.repeat h3 { margin:0 0 0.7rem; font-size:12px; font-weight:500; color:var(--fg3);
-             text-transform:uppercase; letter-spacing:0.06em; }
-.repeat h3 .verdict { margin-left:0.6rem; text-transform:none; letter-spacing:0; }
-.repeat .views { margin-bottom:0.7rem; }
-.repeat table { margin-bottom:0.4rem; }
-.when { font-family:var(--mono); font-size:11px; color:var(--fg4); margin-left:0.5rem;
-        text-transform:none; letter-spacing:0; }
-
-.prompt { margin:0.5rem 0 0; font-size:12px; }
-.prompt summary { cursor:pointer; color:var(--fg4); font-family:var(--mono); font-size:11px;
-                  text-transform:uppercase; letter-spacing:0.06em; user-select:none; }
-.prompt summary:hover { color:var(--fg2); }
-.prompt summary span { text-transform:none; letter-spacing:0; opacity:0.7; }
-.prompt pre { margin:0.5rem 0 0; padding:0.7rem 0.85rem; background:var(--panel);
-              border:1px solid var(--line); border-radius:var(--radius, 4px);
-              font-family:var(--mono); font-size:11px; line-height:1.5; color:var(--fg2);
-              white-space:pre-wrap; max-height:22rem; overflow:auto; }
+/* The legend earns its place: two of the five states are not failures, and the
+   colours mean nothing without being told which. */
+.legend { display: flex; flex-wrap: wrap; gap: 1.25rem; list-style: none;
+          margin: 0; padding: 0.6rem 1.5rem; border-bottom: 1px solid var(--line);
+          color: var(--fg2); font-size: 11px; }
+.legend li { display: flex; align-items: center; gap: 0.4rem; }
+.legend .swatch { width: 9px; height: 9px; border: 1px solid currentColor; background: currentColor; }
+.legend li[data-outcome="agrees"] .swatch { color: var(--fg); }
+.legend li[data-outcome="drawn"] .swatch { color: var(--fg); opacity: 0.55; }
+.legend li[data-outcome="malformed"] .swatch { color: var(--amber); }
+.legend li[data-outcome="differs"] .swatch { color: var(--red); }
+.legend li[data-outcome="missing"] .swatch { color: var(--fg2); background: none; }
+select[hidden] { display: none; }

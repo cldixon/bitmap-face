@@ -28,13 +28,15 @@ set -a; . ./.env; set +a
 ```
 
 ```sh
-uv run face-lab expressions                 # the standard set
-uv run face-lab draw -e happy               # one face, one call — the atomic unit
-uv run face-lab draw -e happy --target transcribe
-uv run face-lab run --model claude-opus-5 --repeats 3
-uv run face-lab run --batch one --context 2 --references 0
-uv run face-export --to ../website/src/data/face-runs
-uv run panel                                # control panel at :4400
+bitface expressions                         # the standard set
+bitface draw happy                          # one face, one call — the atomic unit
+bitface draw happy --target transcribe
+bitface run --model claude-opus-5 --repeats 3
+bitface run --references 0                  # blind: no examples at all
+bitface suite --model claude-sonnet-5 --effort medium -n 2 \
+        --references 4 --reference-set shapes --no-copy
+bitface export --to ../website/src/data/face-runs
+bun run panel                               # control panel at :4400
 ```
 
 Every run writes a complete record to `data/runs/`, malformed and missing faces
@@ -111,13 +113,30 @@ bitmap_face/expressions.py  the standard expression set
 bitmap_face/bitmap.py       the two forms and the conversion — no model in the loop
 bitmap_face/reference.py    16 Happy Mac faces from the ROM
 bitmap_face/chassis.py      the Mac the faces sit inside; compositing is ours
-bitmap_face/prompts.py      per-target instructions and response schemas
+bitmap_face/templates/      the prompt, as jinja2 markdown partials
+bitmap_face/prompts.py      assembles the templates; response schemas
+bitmap_face/outcome.py      the five states an attempt can reach
 bitmap_face/run.py          the experiment
 bitmap_face/export.py       run records -> a compact index
 web/                        the control panel: vanilla JS, no dependencies
 tests/                      the conversion is the instrument, so it is tested first
 data/runs/                  run records
 ```
+
+A **suite** is the unit of comparison: one model at one effort with one
+reference setting, swept across all four targets and repeated *n* times. The
+targets chain — `grid_only` runs first, and the grids it produces are what
+`transcribe` is asked to encode, so that cell asks "can you encode the thing you
+just drew" rather than "can you encode someone else's face". If nothing came out
+well formed, `transcribe` is skipped rather than asked about nothing.
+
+The panel reads suites two ways: **one suite, every expression** (expressions
+down, the four targets across) and **one expression, every suite** (models down,
+the four targets across). Both use the same cell, so a face means the same thing
+in either. It reports rather than scores — two of the four targets have no
+second form to check against by construction, and `outcome.py` keeps "broke the
+format" and "the two forms contradict each other" as the separate findings they
+are.
 
 `schema.py` is the contract. The runner writes it, the exporter and the panel
 read it, and the panel's `web/bitmap.js` mirrors `bitmap.py` deliberately —

@@ -1,229 +1,425 @@
 /**
- * The panel's client. Pick a condition, pick an expression, see every repeat.
+ * bitface — the panel.
  *
- * Organised around conditions rather than runs. Repeats of one cell are the
- * same experiment run again, so the interesting view is all of them at once:
- * a face that agreed twice and failed once is a different result from one that
- * agreed three times, and a list of separate runs cannot show that.
+ * One suite at a time, laid out the way the question is actually asked: an
+ * expression per row, and across it every form the model was asked to produce
+ * it in. Reading across a row shows whether "draw a face" and "write the hex
+ * for a face" get you the same face; reading down a column shows where one way
+ * of asking falls apart.
  *
- * Shapes come from bitmap_face/schema.py -- read that for what a record holds.
+ * It reports what happened rather than scoring it. Two of the four targets have
+ * nothing to check against by construction, so a cell says which of the five
+ * states it reached and shows the pixels; judging them is the point of looking.
  */
 import { compose, gridToBitmap, hexToBitmap, svg } from "./bitmap.js";
 
-const runsEl = document.getElementById("runs");
-const paramsEl = document.getElementById("params");
-const facesEl = document.getElementById("faces");
-const detailEl = document.getElementById("detail");
+const el = (id) => document.getElementById(id);
+const suitesEl = el("suites");
+const repeatEl = el("repeat");
+const chassisEl = el("chassis");
+const configEl = el("config");
+const sheetEl = el("sheet");
+const detailEl = el("detail");
+const viewEl = el("view");
+const expressionEl = el("expression");
+const legendEl = el("legend");
 
-let current = null; // { slug, condition, runs: [...] }
-let names = []; // expression names, in the order the run asked for them
-let selected = 0;
-
-function state(a) {
-  if (!a) return "missing";
-  if (a.missing) return "missing";
-  if (!a.well_formed) return "malformed";
-  if (a.agrees === true) return "agrees";
-  if (a.agrees === false) return "differs";
-  return "drawn";
-}
-
-const MARK = { agrees: "✓", differs: "✗", malformed: "!", missing: "·", drawn: "•" };
-
-const VERDICT = {
-  missing: () => "never came back",
-  malformed: (a) => `malformed — ${a.faults.length} fault${a.faults.length === 1 ? "" : "s"}`,
-  agrees: (a) => (a.expected_hex ? "matches the known hex" : "grid and hex agree"),
-  differs: (a) => {
-    const n = a.differing_rows.length;
-    return n === 1 ? "1 row differs" : `${n} rows differ`;
-  },
-  drawn: () => "one form only — nothing to compare",
+const TARGET_BLURB = {
+  grid_only: "draws a grid",
+  transcribe: "encodes its own grid",
+  hex_only: "writes hex directly",
+  both: "both forms at once",
 };
 
-const pct = (v) => (v === null || v === undefined ? "n/a" : `${Math.round(v * 100)}%`);
+const OUTCOME_LABEL = {
+  missing: "never came back",
+  malformed: "broke the format",
+  drawn: "one form only",
+  differs: "forms disagree",
+  agrees: "forms agree",
+};
 
-/** The call within a run that covered this expression. */
-function callFor(run, name) {
-  return run.calls.find((c) => c.expressions.includes(name)) ?? run.calls[0] ?? null;
-}
+let suite = null;
+let repeat = "1";
+let view = "suite";
+let expression = null;
+let catalogue = [];
+//: Compare mode needs every suite at once. They are small and local, so they are
+//: fetched once and kept rather than re-requested on each toggle.
+const loaded = new Map();
 
-/** A disclosure holding text sent to the model, collapsed by default. */
-function prompt(label, text) {
-  if (!text) return "";
-  const size = `${text.length.toLocaleString()} chars`;
-  return `<details class="prompt"><summary>${label} <span>${size}</span></summary><pre>${escape(text)}</pre></details>`;
-}
+// --------------------------------------------------------------------------- pixels
 
-/** Every repeat's attempt at one expression, in repeat order. */
-const attemptsFor = (name) =>
-  current.runs.map((run) => run.attempts.find((a) => a.expression === name) ?? null);
-
-async function loadConditions() {
-  const conditions = await fetch("/api/conditions").then((r) => r.json());
-  if (!conditions.length) {
-    detailEl.innerHTML = `<p class="empty">No runs in data/runs yet.</p>`;
-    return;
+/**
+ * The bitmap a cell should show, and which rows to band.
+ *
+ * Each target produces a different artefact, so "the face" means something
+ * different in each column. grid_only has only a grid; hex_only has only hex;
+ * transcribe's answer is the hex it wrote for a grid it was given; `both`
+ * returns two forms that may not agree, and there the grid is shown, with the
+ * rows its own hex contradicts banded.
+ */
+function pixels(entry, target, config) {
+  const { width: w, height: h } = config;
+  if (!entry) return null;
+  const bands = entry.differing_rows ?? [];
+  if (target === "hex_only" || target === "transcribe") {
+    return entry.hex ? { bitmap: hexToBitmap(entry.hex, w, h), bands } : null;
   }
-  runsEl.innerHTML = conditions
-    .map((c, i) => {
-      const spread =
-        c.rate === null
-          ? "n/a"
-          : c.rate.min === c.rate.max
-            ? pct(c.rate.mean)
-            : `${pct(c.rate.mean)} (${pct(c.rate.min)}–${pct(c.rate.max)})`;
-      const reps = c.repeats === 1 ? "" : ` · ${c.repeats}×`;
-      return `<option value="${c.slug}"${i === 0 ? " selected" : ""}>${c.slug}${reps} · ${spread}</option>`;
+  if (entry.grid) return { bitmap: gridToBitmap(entry.grid, w, h), bands };
+  if (entry.hex) return { bitmap: hexToBitmap(entry.hex, w, h), bands };
+  return null;
+}
+
+const shown = (byTarget, target) => {
+  const entries = byTarget?.[target] ?? [];
+  return repeat === "all" ? entries : entries.filter((e) => String(e.repeat) === repeat);
+};
+
+// --------------------------------------------------------------------------- render
+
+function face(entry, target, scale, from = suite) {
+  const art = pixels(entry, target, from.config);
+  if (!art) return `<span class="void" title="${OUTCOME_LABEL[entry?.outcome] ?? "nothing"}">—</span>`;
+  const bits = chassisEl.checked ? compose(art.bitmap) : art.bitmap;
+  const bands = chassisEl.checked ? art.bands.map((y) => y + 5) : art.bands;
+  return svg(bits, { scale: chassisEl.checked ? Math.max(2, scale / 2) : scale, bands });
+}
+
+function cell(name, target, from = suite) {
+  const entries = shown(from.cells[name], target);
+  if (!entries.length) return `<td class="cell"><span class="void">—</span></td>`;
+  const scale = entries.length > 1 ? 4 : 6;
+  const art = entries
+    .map(
+      (entry) => `<button class="face" data-name="${esc(name)}" data-target="${target}"
+         data-suite="${esc(from.id)}" data-repeat="${entry.repeat}" data-outcome="${entry.outcome}"
+         title="r${entry.repeat} · ${OUTCOME_LABEL[entry.outcome]}">${face(entry, target, scale, from)}</button>`,
+    )
+    .join("");
+  return `<td class="cell">${art}</td>`;
+}
+
+/**
+ * The five states, named. Without this the colours are a private code, and two
+ * of the states ("one form only", "never came back") look like failures when
+ * one of them is simply the answer to a question we did not ask.
+ */
+function renderLegend() {
+  legendEl.innerHTML = Object.entries(OUTCOME_LABEL)
+    .map(([state, label]) => `<li data-outcome="${state}"><span class="swatch"></span>${label}</li>`)
+    .join("");
+}
+
+/** One expression, every suite: the same face asked for by three models. */
+function renderCompare() {
+  const suites = catalogue.map((s) => loaded.get(s.id)).filter(Boolean);
+  const targets = [...new Set(suites.flatMap((s) => s.targets))];
+  configEl.textContent = `${expression}  ·  ${suites.length} suites  ·  repeat ${repeat}`;
+
+  const head = targets
+    .map((t) => `<th><span class="target">${t}</span><span class="blurb">${TARGET_BLURB[t] ?? ""}</span></th>`)
+    .join("");
+  const rows = suites
+    .map((s) => {
+      const label = [s.config.model.replace("claude-", ""), s.config.effort].filter(Boolean).join(" · ");
+      const has = s.cells[expression];
+      return (
+        `<tr><th class="rowhead"><span>${esc(label)}</span><span class="tier">${s.config.references || "no"} refs</span></th>` +
+        targets.map((t) => (has ? cell(expression, t, s) : `<td class="cell"><span class="void">—</span></td>`)).join("") +
+        `</tr>`
+      );
     })
     .join("");
-  runsEl.onchange = () => loadCondition(runsEl.value);
-  await loadCondition(conditions[0].slug);
+  sheetEl.innerHTML = `<table><thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+  wireFaces();
 }
 
-async function loadCondition(slug) {
-  current = await fetch(`/api/conditions/${encodeURIComponent(slug)}`).then((r) => r.json());
-  selected = 0;
-  names = current.runs[0].attempts.map((a) => a.expression);
+function wireFaces() {
+  for (const button of sheetEl.querySelectorAll(".face")) {
+    button.onclick = () =>
+      showDetail(button.dataset.name, button.dataset.target, button.dataset.repeat, button.dataset.suite);
+  }
+}
 
-  const c = current.condition;
-  const runs = current.runs;
-  const rates = runs.map((r) => r.totals.agreement_rate).filter((v) => v !== null);
-  const mean = rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : null;
-  const totals = (key) => runs.reduce((n, r) => n + (r.totals[key] ?? 0), 0);
-
-  paramsEl.textContent = [
+function render() {
+  if (!suite) return;
+  renderLegend();
+  if (view === "compare") return renderCompare();
+  const c = suite.config;
+  const refs = c.references
+    ? `${c.references} ${c.reference_set ?? "faces"} reference${c.references === 1 ? "" : "s"}`
+    : "no references";
+  configEl.textContent = [
     c.model,
-    `target ${c.target}`,
-    `batch ${c.batch}`,
-    `${c.references} ref`,
-    c.context ? `ctx ${c.context}` : null,
-    c.effort ? `effort ${c.effort}` : null,
-    `${runs.length} repeat${runs.length === 1 ? "" : "s"}`,
-    `${totals("well_formed")}/${totals("returned")} formed`,
-    `${totals("agreed")}/${totals("measurable")} agreed (${pct(mean)})`,
-    totals("thinking_tokens") ? `${totals("thinking_tokens").toLocaleString()} thinking tok` : null,
-    `${Math.round(totals("duration_seconds"))}s`,
+    c.effort ?? "no effort setting",
+    refs,
+    c.no_copy ? "told not to copy" : "no copy directive",
+    `${c.width}×${c.height}`,
+    `${suite.repeats} repeat${suite.repeats === 1 ? "" : "s"}`,
+  ].join("  ·  ");
+
+  const head = suite.targets
+    .map((t) => `<th><span class="target">${t}</span><span class="blurb">${TARGET_BLURB[t] ?? ""}</span></th>`)
+    .join("");
+  const rows = suite.expressions
+    .map(
+      (name) =>
+        `<tr><th class="rowhead"><span>${esc(name)}</span><span class="tier">${esc(suite.tiers[name] ?? "")}</span></th>` +
+        suite.targets.map((t) => cell(name, t)).join("") +
+        `</tr>`,
+    )
+    .join("");
+  sheetEl.innerHTML = `<table><thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+  wireFaces();
+}
+
+// --------------------------------------------------------------------------- detail
+
+function showDetail(name, target, rep, suiteId) {
+  const from = (suiteId && loaded.get(suiteId)) || suite;
+  const entry = (from.cells[name]?.[target] ?? []).find((e) => String(e.repeat) === String(rep));
+  if (!entry) return;
+  const run = from.runs.find((r) => r.target === target && String(r.repeat) === String(rep));
+  const { width: w, height: h } = from.config;
+
+  // Where two forms exist, show both renderings rather than picking one. A
+  // disagreement is the finding, and it is only legible as two faces.
+  const panes = [];
+  if (entry.given_grid) panes.push(["given grid", gridToBitmap(entry.given_grid, w, h)]);
+  if (entry.grid) panes.push(["its grid", gridToBitmap(entry.grid, w, h)]);
+  if (entry.hex) panes.push(["its hex, decoded", hexToBitmap(entry.hex, w, h)]);
+  if (entry.expected_hex && !entry.grid)
+    panes.push(["the correct hex, decoded", hexToBitmap(entry.expected_hex, w, h)]);
+
+  const art = panes
+    .map(
+      ([label, bitmap]) =>
+        `<figure>${svg(bitmap, { scale: 7, bands: entry.differing_rows })}<figcaption>${label}</figcaption></figure>`,
+    )
+    .join("");
+
+  const text = [
+    entry.grid && ["grid", entry.grid.join("\n")],
+    entry.hex && ["hex", entry.hex.join("\n")],
+    entry.hex_from_grid && ["hex read off its grid", entry.hex_from_grid.join("\n")],
+    entry.expected_hex && ["hex it should have written", entry.expected_hex.join("\n")],
   ]
     .filter(Boolean)
-    .join("  ·  ");
-
-  renderList();
-  renderDetail();
-}
-
-function gridOf(a, W, H) {
-  if (!a) return Array.from({ length: H }, () => Array(W).fill(0));
-  if (a.grid) return gridToBitmap(a.grid, W, H);
-  if (a.given_grid) return gridToBitmap(a.given_grid, W, H);
-  if (a.hex) return hexToBitmap(a.hex, W, H);
-  return Array.from({ length: H }, () => Array(W).fill(0));
-}
-
-function renderList() {
-  const c = current.condition;
-  facesEl.innerHTML = names
-    .map((name, i) => {
-      const across = attemptsFor(name);
-      const agreed = across.filter((a) => a?.agrees === true).length;
-      const measurable = across.filter((a) => a && a.agrees !== null).length;
-      // One mark per repeat: the distribution, at a glance, in the list itself.
-      const marks = across.map((a) => `<i class="m ${state(a)}">${MARK[state(a)]}</i>`).join("");
-      const thumb = svg(gridOf(across[0], c.width, c.height), { scale: 2 });
-      const worst = across.some((a) => state(a) !== "agrees") ? "differs" : "agrees";
-      return `<button data-i="${i}" aria-current="${i === selected}">
-        <span class="dot ${measurable ? worst : "drawn"}"></span>${thumb}
-        <span class="name">${escape(name)}</span>
-        <span class="marks">${marks}</span>
-        ${measurable > 1 ? `<span class="score">${agreed}/${measurable}</span>` : ""}
-      </button>`;
-    })
+    .map(([label, body]) => `<section><h4>${label}</h4><pre>${esc(body)}</pre></section>`)
     .join("");
-  for (const button of facesEl.querySelectorAll("button")) {
-    button.onclick = () => {
-      selected = Number(button.dataset.i);
-      renderList();
-      renderDetail();
-    };
+
+  const faults = entry.faults.length
+    ? `<section><h4>faults</h4><ul>${entry.faults.map((f) => `<li>${esc(f)}</li>`).join("")}</ul></section>`
+    : "";
+  const copied = entry.copied
+    ? `<p class="warn">reproduces the reference “${esc(entry.copied)}”</p>`
+    : "";
+
+  detailEl.hidden = false;
+  detailEl.innerHTML = `
+    <button class="close" type="button" aria-label="Close">×</button>
+    <h3>${esc(name)} <span class="dim">${target} · repeat ${rep} · ${esc(from.config.model.replace("claude-", ""))}</span></h3>
+    <p class="outcome" data-outcome="${entry.outcome}">${OUTCOME_LABEL[entry.outcome]}</p>
+    ${copied}
+    <div class="panes">${art}</div>
+    ${faults}${text}
+    ${run ? `<details><summary>prompt sent</summary><pre>${esc(run.system ?? "")}\n\n---\n\n${esc(run.user ?? "")}</pre></details>` : ""}`;
+  detailEl.querySelector(".close").onclick = () => {
+    detailEl.hidden = true;
+  };
+  detailEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// --------------------------------------------------------------------------- boot
+
+async function fetchSuite(id) {
+  if (!loaded.has(id)) {
+    loaded.set(id, await fetch(`/api/suites/${encodeURIComponent(id)}`).then((r) => r.json()));
   }
+  return loaded.get(id);
 }
 
-function renderDetail() {
-  const c = current.condition;
-  const { width: W, height: H } = c;
-  const name = names[selected];
-  const across = attemptsFor(name);
+async function load(id) {
+  suite = await fetchSuite(id);
+  detailEl.hidden = true;
+  expression ??= suite.expressions[0];
+  fillRepeats();
+  fillExpressions();
+  render();
+}
 
-  const cards = across
-    .map((a, i) => {
-      if (!a) return "";
-      const bands = a.differing_rows ?? [];
-      const views = [];
-      if (a.given_grid) views.push(["given", gridToBitmap(a.given_grid, W, H)]);
-      if (a.grid) views.push(["drawn", gridToBitmap(a.grid, W, H)]);
-      if (a.hex) views.push(["written", hexToBitmap(a.hex, W, H)]);
+/** Repeats available depends on the view: compare spans suites, so take the smallest. */
+function fillRepeats() {
+  const n =
+    view === "compare"
+      ? Math.min(...[...loaded.values()].map((s) => s.repeats))
+      : suite.repeats;
+  const keep = repeat;
+  repeatEl.innerHTML =
+    Array.from({ length: n }, (_, i) => `<option value="${i + 1}">repeat ${i + 1}</option>`).join("") +
+    (n > 1 && view === "suite" ? `<option value="all">all ${n}</option>` : "");
+  repeat = [...repeatEl.options].some((o) => o.value === keep) ? keep : "1";
+  repeatEl.value = repeat;
+}
 
-      const panes = views
-        .map(([label, bm]) => `<div class="view"><span>${label}</span>${svg(bm, { scale: 7, bands })}</div>`)
-        .join("");
-      const chassis = `<div class="view"><span>chassis</span>${svg(compose(gridOf(a, W, H)), { scale: 4 })}</div>`;
-      const want = a.hex_from_grid ?? a.expected_hex ?? null;
-      const rows = bands.length
-        ? `<table><thead><tr><th>row</th><th>wrote</th><th>should be</th></tr></thead><tbody>${bands
-            .map(
-              (y) =>
-                `<tr data-differs="true"><td>${y}</td><td>${escape(a.hex?.[y] ?? "—")}</td>` +
-                `<td class="want">${want ? escape(want[y]) : ""}</td></tr>`,
-            )
-            .join("")}</tbody></table>`
-        : "";
-      const faults = a.faults?.length
-        ? `<ul class="faults">${a.faults.map((f) => `<li>${escape(f)}</li>`).join("")}</ul>`
-        : "";
+function fillExpressions() {
+  expressionEl.innerHTML = suite.expressions
+    .map((n) => `<option value="${esc(n)}">${esc(n)}</option>`)
+    .join("");
+  expressionEl.value = expression;
+}
 
-      // Numbered by position in the condition, not by the record's own
-      // `repeat`: that counter restarts at 1 on every invocation, so three
-      // separate runs of one cell all call themselves repeat 1.
-      const when = new Date(current.runs[i].started_at).toLocaleString(undefined, {
-        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-      });
-      const call = callFor(current.runs[i], name);
-      return `<section class="repeat" data-state="${state(a)}">
-        <h3>run ${i + 1} of ${current.runs.length} <span class="when">${when}</span>
-          <span class="verdict ${state(a)}">${VERDICT[state(a)](a)}</span></h3>
-        <div class="views">${panes}${chassis}</div>
-        ${rows}${faults}
-        ${prompt("user prompt", call?.prompt)}
-      </section>`;
+async function setView(next) {
+  view = next;
+  const compare = view === "compare";
+  expressionEl.hidden = !compare;
+  suitesEl.hidden = compare;
+  //: Compare only means something once every suite is in hand.
+  if (compare) await Promise.all(catalogue.map((s) => fetchSuite(s.id)));
+  fillRepeats();
+  detailEl.hidden = true;
+  render();
+}
+
+async function boot() {
+  catalogue = await fetch("/api/suites").then((r) => r.json());
+  if (!catalogue.length) {
+    sheetEl.innerHTML = `<p class="empty">No runs in data/runs yet. Try <code>bitface suite</code>.</p>`;
+    return;
+  }
+  suitesEl.innerHTML = catalogue
+    .map((s) => {
+      const bits = [s.model, s.effort, s.references ? `${s.references} ${s.reference_set ?? ""}`.trim() : "blind"];
+      const tag = s.loose ? " (loose)" : "";
+      return `<option value="${esc(s.id)}">${esc(bits.filter(Boolean).join(" · "))}${tag}</option>`;
     })
     .join("");
-
-  const measurable = across.filter((a) => a && a.agrees !== null).length;
-  const agreed = across.filter((a) => a?.agrees === true).length;
-  const score = measurable > 1 ? ` <span class="tier">${agreed}/${measurable} agreed</span>` : "";
-
-  // The system prompt depends only on the condition, so it is shown once.
-  const system = current.runs[0]?.prompts?.system;
-  detailEl.innerHTML =
-    `<h2>${escape(name)} <span class="tier">${escape(across.find(Boolean)?.tier ?? "")}</span>${score}</h2>` +
-    prompt("system prompt", system) +
-    cards;
+  suitesEl.onchange = () => load(suitesEl.value);
+  repeatEl.onchange = () => {
+    repeat = repeatEl.value;
+    render();
+  };
+  expressionEl.onchange = () => {
+    expression = expressionEl.value;
+    render();
+  };
+  viewEl.onchange = () => setView(viewEl.value);
+  chassisEl.onchange = render;
+  await load(catalogue[0].id);
 }
 
-function escape(text) {
+function esc(text) {
   return String(text).replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
   );
 }
 
-document.addEventListener("keydown", (event) => {
-  if (!current) return;
-  if (event.key === "j" || event.key === "ArrowDown") selected = (selected + 1) % names.length;
-  else if (event.key === "k" || event.key === "ArrowUp") selected = (selected - 1 + names.length) % names.length;
-  else return;
-  event.preventDefault();
-  renderList();
-  renderDetail();
-});
+boot();
 
-loadConditions();
+// --------------------------------------------------------------------------- export
+
+/**
+ * Draw the sheet to a canvas and hand it back as a file.
+ *
+ * Redrawn from the bitmaps rather than rasterised from the page: every pixel is
+ * a filled rectangle at whatever scale is asked for, so the export is crisp at
+ * any size instead of an upscaled screenshot of a 96px icon. It also sidesteps
+ * having to inline fonts and styles into serialised SVG. The configuration is
+ * printed along the bottom, because a sheet of faces with no note of how they
+ * were asked for is not evidence of anything.
+ */
+const SCALE = 8;
+const PAD = 56;
+const GAP_X = 44;
+const GAP_Y = 26;
+const LABEL = 20;
+const HEAD = 34;
+const ROWHEAD = 130;
+
+function styles() {
+  const css = getComputedStyle(document.body);
+  return { bg: css.backgroundColor, fg: css.color, muted: css.getPropertyValue("--fg2").trim() };
+}
+
+function drawSheet() {
+  if (!suite) return null;
+  const withChassis = chassisEl.checked;
+  const w = (withChassis ? 32 : suite.config.width) * SCALE;
+  const h = (withChassis ? 32 : suite.config.height) * SCALE;
+  //: Export what is on screen. In compare mode the rows are suites, not
+  //: expressions, so the row label and the source of each cell both change.
+  const compare = view === "compare";
+  const sources = compare ? catalogue.map((x) => loaded.get(x.id)).filter(Boolean) : [suite];
+  const targets = compare ? [...new Set(sources.flatMap((x) => x.targets))] : suite.targets;
+  const rows = compare
+    ? sources.map((x) => ({
+        label: [x.config.model.replace("claude-", ""), x.config.effort].filter(Boolean).join(" · "),
+        name: expression,
+        from: x,
+      }))
+    : suite.expressions.map((n) => ({ label: n, name: n, from: suite }));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = PAD * 2 + ROWHEAD + targets.length * w + (targets.length - 1) * GAP_X;
+  canvas.height = PAD * 2 + HEAD + rows.length * (h + GAP_Y) + LABEL * 2;
+
+  const ctx = canvas.getContext("2d");
+  const { bg, fg, muted } = styles();
+  // JPEG has no transparency, so both formats get the page's own background
+  // rather than one of them silently coming out black.
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = `${LABEL}px ui-monospace, Menlo, Consolas, monospace`;
+  ctx.textBaseline = "top";
+
+  const colX = (i) => PAD + ROWHEAD + i * (w + GAP_X);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = muted || fg;
+  targets.forEach((t, i) => ctx.fillText(t, colX(i) + w / 2, PAD));
+
+  rows.forEach(({ label, name, from }, r) => {
+    const y = PAD + HEAD + r * (h + GAP_Y);
+    ctx.textAlign = "right";
+    ctx.fillStyle = muted || fg;
+    ctx.fillText(label, PAD + ROWHEAD - 24, y + h / 2 - LABEL / 2);
+
+    targets.forEach((target, i) => {
+      const entry = shown(from.cells[name], target)[0];
+      const art = pixels(entry, target, from.config);
+      if (!art) return;
+      const bits = withChassis ? compose(art.bitmap) : art.bitmap;
+      ctx.fillStyle = fg;
+      bits.forEach((row, by) =>
+        row.forEach((bit, bx) => {
+          if (bit) ctx.fillRect(colX(i) + bx * SCALE, y + by * SCALE, SCALE, SCALE);
+        }),
+      );
+    });
+  });
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = muted || fg;
+  ctx.fillText(configEl.textContent, PAD, canvas.height - PAD + 4);
+  return canvas;
+}
+
+el("save").onclick = () => {
+  const canvas = drawSheet();
+  if (!canvas) return;
+  const format = el("format").value;
+  canvas.toBlob(
+    (blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${view === "compare" ? `compare-${expression}` : suite.id}-r${repeat}.${format}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    format === "jpeg" ? "image/jpeg" : "image/png",
+    format === "jpeg" ? 0.95 : undefined,
+  );
+};
