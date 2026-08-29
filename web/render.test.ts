@@ -197,9 +197,45 @@ test("prose destinations offer no controls and nothing to export", async () => {
   for (const view of ["overview", "method"]) {
     await goto(view);
     expect(Boolean(nodes.get("bar")!.hiddenAttr)).toBe(true);
-    expect(Boolean(nodes.get("export")!.hiddenAttr)).toBe(true);
     expect(stage()).toContain('class="prose"');
+    expect(stage()).not.toContain('id="x-save"');
   }
+});
+
+test("saving goes with the controls, not below the figure", async () => {
+  // A figure can be a page and a half tall; the controls stay put.
+  await matrix();
+  expect(stage().split('class="key"')[1]).toContain('id="x-save"');
+
+  for (const view of ["matrix", "index", "plate"]) {
+    if (view === "matrix") await matrix();
+    else await goto(view);
+    // Exactly one control per page, wherever that page keeps its controls.
+    expect((stage().match(/id="x-save"/g) ?? []).length).toBe(1);
+  }
+});
+
+test("each replicate can be saved on its own", async () => {
+  const { setView, state } = await import("./app.js");
+  await goto("index");
+  state.expression = "happy";
+  state.form = "grid_only";
+  state.replicate = "all";
+  await setView("index");
+
+  const panels = (stage().match(/class="panel"/g) ?? []).length;
+  expect(panels).toBeGreaterThan(1);
+  expect((stage().match(/class="snap"/g) ?? []).length).toBe(panels);
+
+  painted.length = 0;
+  nodes.get("stage")!.querySelectorAll(".snap")[0].onclick();
+  const drawn = painted.find((c) => c.calls.rects > 0)!;
+  expect(drawn).toBeDefined();
+  // One icon, not the whole stack.
+  expect(drawn.calls.texts).toEqual(["replicate 1"]);
+
+  state.replicate = "1";
+  await setView("index");
 });
 
 test("a page shows the control bar only if it has nowhere better", async () => {
@@ -519,7 +555,7 @@ test("an export carries only the marks that were switched on", async () => {
   await matrix();
   try {
     painted.length = 0;
-    nodes.get("save")!.onclick();
+    el("x-save").onclick();
     const all = painted.find((c) => c.calls.rects > 50)!.calls.texts.join(" ");
     expect(all).toContain("disagree");
     expect(all).toContain("malformed");
@@ -529,7 +565,7 @@ test("an export carries only the marks that were switched on", async () => {
     state.marks.differs = false;
     await matrix();
     painted.length = 0;
-    nodes.get("save")!.onclick();
+    el("x-save").onclick();
     const some = painted.find((c) => c.calls.rects > 50)!.calls.texts.join(" ");
     // The image explains what it shows, and no longer claims a colour it drops.
     expect(some).not.toContain("disagree");
@@ -655,41 +691,77 @@ test("the index keeps its controls on the bench, beside the attempt", async () =
   nodes.get("t-replicate")!.onchange();
 });
 
-test("the attempt is shown in full, row by row", async () => {
+test("an attempt is three things, each shown once", async () => {
   const { setView, state } = await import("./app.js");
   await goto("index");
-  for (const form of ["grid_only", "hex_only", "both:grid"]) {
+  state.expression = "happy";
+  state.replicate = "1";
+  for (const form of ["grid_only", "hex_only", "both:grid", "both:hex"]) {
     state.form = form;
     await setView("index");
-    const table = stage().split('class="rows"')[1];
-    expect(table).toBeDefined();
-    const heads = (table.split("<tbody>")[0].match(/<th>/g) ?? []).length;
-    const cells = (table.split("<tbody>")[1].split("</tr>")[0].match(/<td/g) ?? []).length;
-    expect(heads).toBe(cells);
+    const panel = stage().split('class="panel"')[1];
+    // The face, the grid, the hex. Not the hex twice.
+    expect((panel.match(/class="shown"/g) ?? []).length).toBe(1);
+    expect((panel.match(/class="readout"/g) ?? []).length).toBe(2);
+    expect(panel).toMatch(/<h4>grid/);
+    expect(panel).toMatch(/<h4>hex/);
   }
-
-  state.form = "both:hex";
-  await setView("index");
-  let table = stage().split('class="rows"')[1];
-  expect(table).toContain("<th>hex from grid</th>");
-  expect(table).toContain("<th>hex written</th>");
-
-  state.form = "grid_only";
-  await setView("index");
-  table = stage().split('class="rows"')[1];
-  expect(table).toContain("<th>hex</th>");
-  expect(table).not.toContain("hex written");
 });
 
-test("the request that produced the face is available in full", async () => {
+test("a derived form says it was derived", async () => {
+  const { setView, state } = await import("./app.js");
   await goto("index");
-  const panel = stage().split('class="panel"')[1];
-  expect(panel).toContain("the request as sent");
-  expect(panel).toContain("<h4>system</h4>");
-  expect(panel).toContain("<h4>user</h4>");
+  state.expression = "happy";
+  state.replicate = "1";
+
+  // grid-only wrote no hex; hex-only drew no grid. Each still shows both, and
+  // each is honest about which one it worked out.
+  state.form = "grid_only";
+  await setView("index");
+  expect(stage()).toContain("from its grid");
+  expect(stage()).not.toContain("from its hex");
+
+  state.form = "hex_only";
+  await setView("index");
+  expect(stage()).toContain("from its hex");
+  expect(stage()).not.toContain("from its grid");
+
+  // combined wrote both, so neither is derived.
+  state.form = "both:hex";
+  await setView("index");
+  expect(stage()).not.toContain("from its grid");
+  expect(stage()).not.toContain("from its hex");
+});
+
+test("the prompt is shown once, above the replicates", async () => {
+  const { setView, state } = await import("./app.js");
+  await goto("index");
+  state.expression = "happy";
+  state.form = "grid_only";
+  state.replicate = "all";
+  await setView("index");
+
+  const html = stage();
+  // Once for the selection, not once per replicate.
+  expect((html.match(/class="prompt"/g) ?? []).length).toBe(1);
+  expect((html.match(/<h4>system<\/h4>/g) ?? []).length).toBe(1);
+  expect((html.match(/view prompt/g) ?? []).length).toBe(1);
+  expect((html.match(/class="panel"/g) ?? []).length).toBeGreaterThan(1);
+
+  // Above them, where the rest of the selection's controls are.
+  const detail = html.split('class="detail"')[1];
+  expect(detail.indexOf('class="prompt"')).toBeLessThan(detail.indexOf('class="panel"'));
+
+  // Every replicate of a condition is the same request sent again, so no caveat.
+  expect(html).not.toContain("varies its prompt");
+
   // Tokens are billed per request, not per icon, so no per-icon cost is claimed.
-  expect(panel).not.toContain("tokens in");
-  expect(panel).not.toContain("latency");
+  expect(html).not.toContain("tokens in");
+  expect(html).not.toContain("latency");
+
+  state.replicate = "1";
+  await setView("index");
+  expect((stage().match(/class="prompt"/g) ?? []).length).toBe(1);
 });
 
 // --------------------------------------------------------------------------- plate
@@ -801,7 +873,7 @@ test("each view exports its own shape, and none carries a caption", async () => 
     painted.length = 0;
     if (view === "matrix") await matrix();
     else await goto(view);
-    nodes.get("save")!.onclick();
+    el("x-save").onclick();
     const drawn = painted.find((c) => c.calls.rects > 50);
     expect(drawn).toBeDefined();
     // No technical footer annotated onto the image. Cell labels are not a
@@ -813,7 +885,7 @@ test("each view exports its own shape, and none carries a caption", async () => 
 test("the matrix export follows the facets and carries its key", async () => {
   await matrix();
   painted.length = 0;
-  nodes.get("save")!.onclick();
+  el("x-save").onclick();
   let drawn = painted.find((c) => c.calls.rects > 50)!;
   // One outline per cell. The key strokes its outlined swatch too, so this is a
   // floor rather than an exact count.
@@ -825,7 +897,7 @@ test("the matrix export follows the facets and carries its key", async () => {
   // Narrowed, it exports what is on screen rather than the whole thing.
   await matrix({ expression: ["happy"] });
   painted.length = 0;
-  nodes.get("save")!.onclick();
+  el("x-save").onclick();
   drawn = painted.find((c) => c.calls.rects > 0)!;
   // Three cells now, not thirty-six.
   expect(drawn.calls.strokes).toBeLessThan(10);
@@ -833,22 +905,41 @@ test("the matrix export follows the facets and carries its key", async () => {
 });
 
 test("the cycle exports as a GIF, a single replicate as a still", async () => {
-  const { state } = await import("./app.js");
-  await goto("matrix");
+  const { setView, state } = await import("./app.js");
+  const formats = () => stage().split('id="x-format"')[1].split("</select>")[0];
+
   state.replicate = "all";
-  nodes.get("replicate")!.value = "all";
-  nodes.get("replicate")!.onchange();
-  expect(String(nodes.get("format")!.innerHTML)).toContain('value="gif"');
+  await setView("matrix");
+  expect(formats()).toContain('value="gif"');
 
   blobs.length = 0;
-  nodes.get("save")!.onclick();
+  await el("x-save").onclick();
   expect(blobs.length).toBe(1);
   expect(blobs[0].type).toBe("image/gif");
   expect(String.fromCharCode(...(blobs[0].parts[0] as Uint8Array).slice(0, 6))).toBe("GIF89a");
 
-  nodes.get("replicate")!.value = "1";
-  nodes.get("replicate")!.onchange();
-  expect(String(nodes.get("format")!.innerHTML)).toContain('value="png"');
+  state.replicate = "1";
+  await setView("matrix");
+  expect(formats()).toContain('value="png"');
+});
+
+test("GIF is offered only where something moves", async () => {
+  const { setView, state } = await import("./app.js");
+  const formats = () => stage().split('id="x-format"')[1].split("</select>")[0];
+
+  state.replicate = "all";
+  await setView("matrix");
+  expect(formats()).toContain('value="gif"');
+
+  // The index shows every replicate at once, so a GIF there would be one frame.
+  await goto("index");
+  state.replicate = "all";
+  await setView("index");
+  expect(formats()).not.toContain('value="gif"');
+  expect(formats()).toContain('value="png"');
+
+  state.replicate = "1";
+  await setView("index");
 });
 
 test("the page introduces itself before it offers controls", async () => {
@@ -857,7 +948,6 @@ test("the page introduces itself before it offers controls", async () => {
   expect(at('id="title"')).toBeLessThan(at('id="bar"'));
   expect(at('id="bar"')).toBeLessThan(at('id="details"'));
   expect(at('id="details"')).toBeLessThan(at('id="stage"'));
-  expect(at('id="stage"')).toBeLessThan(at('id="export"'));
   expect(at('id="nav"')).toBeLessThan(at("<main>"));
   expect(at('class="subject"')).toBeLessThan(at('id="display"'));
 });
@@ -929,25 +1019,34 @@ test("a subset is a link, and an empty selection carries nothing", async () => {
   expect(location.hash).not.toContain("expr=");
 });
 
-test("the index can show every replicate at once", async () => {
+test("every replicate stacks as the same full panel", async () => {
   const { setView, state } = await import("./app.js");
   await goto("index");
   state.expression = "happy";
   state.form = "grid_only";
+  state.replicate = "1";
+  await setView("index");
+  const one = stage();
+  expect((one.match(/class="panel"/g) ?? []).length).toBe(1);
+
   state.replicate = "all";
   await setView("index");
-  const html = stage();
-  expect(html).toContain('class="draws"');
-  // One drawing per replicate, each labelled and carrying its own outcome.
-  const draws = (html.match(/class="draw"/g) ?? []).length;
-  expect(draws).toBeGreaterThan(1);
-  expect(html).toMatch(/replicate 1 ·/);
-  // Reading one in full is the other mode, so the row table steps aside.
-  expect(html).not.toContain('class="rows"');
+  const every = stage();
+  // One panel per replicate, each the same shape as the single view -- not a
+  // reduced strip of faces.
+  const panels = (every.match(/class="panel"/g) ?? []).length;
+  expect(panels).toBeGreaterThan(1);
+  expect((every.match(/class="spread"/g) ?? []).length).toBe(panels);
+  expect((every.match(/class="shown"/g) ?? []).length).toBe(panels);
+  // Two readouts and two copy controls per panel: the grid and the hex.
+  expect((every.match(/class="readout"/g) ?? []).length).toBe(panels * 2);
+  expect((every.match(/class="copy"/g) ?? []).length).toBe(panels * 2);
+  // Each says which replicate it is.
+  expect(every).toMatch(/replicate 1<\/h3>|replicate 1<span/);
+  expect(every).toMatch(/replicate 2/);
 
   state.replicate = "1";
   await setView("index");
-  expect(stage()).toContain('class="rows"');
 });
 
 test("a matrix face says what clicking it does", async () => {
@@ -980,7 +1079,8 @@ test("`all` does not animate the index", async () => {
   const before = state.frame;
   await new Promise((r) => setTimeout(r, 900));
   expect(state.frame).toBe(before);
-  expect(stage()).toContain('class="draws"');
+  // Stacked panels, not a cycle.
+  expect((stage().match(/class="panel"/g) ?? []).length).toBeGreaterThan(1);
 
   state.replicate = "1";
   await setView("index");
@@ -998,8 +1098,7 @@ test("the attempt fills the width: face, rows, and hex to take away", async () =
   expect(panel).toContain('class="spread"');
   // All three side by side, rather than a narrow column.
   expect(panel).toContain('class="shown"');
-  expect(panel).toContain('class="rows"');
-  expect(panel).toContain('class="readout"');
+  expect((panel.match(/class="readout"/g) ?? []).length).toBe(2);
 });
 
 test("the hex can be taken to the clipboard", async () => {
@@ -1010,10 +1109,11 @@ test("the hex can be taken to the clipboard", async () => {
   state.replicate = "1";
   await setView("index");
 
-  const button = nodes.get("stage")!.querySelectorAll(".copy")[0];
-  expect(button).toBeDefined();
+  const buttons = nodes.get("stage")!.querySelectorAll(".copy");
+  expect(buttons.length).toBe(2);
   copied.length = 0;
-  await button.onclick();
+  // The second is the hex; the first takes the grid.
+  await buttons[1].onclick();
   expect(copied.length).toBe(1);
   // Ten rows of four hex digits, which is what the icon actually is.
   const lines = copied[0].split("\n");
@@ -1021,18 +1121,79 @@ test("the hex can be taken to the clipboard", async () => {
   for (const line of lines) expect(line).toMatch(/^[0-9A-F]{4}$/);
 });
 
-test("a target that only drew still offers its hex, and says where it came from", async () => {
+
+test("the selection is named once, and a panel says only which replicate", async () => {
   const { setView, state } = await import("./app.js");
   await goto("index");
-  state.expression = "happy";
+  state.expression = "kiss";
   state.form = "grid_only";
+  state.replicate = "all";
+  await setView("index");
+
+  const html = stage();
+  const detail = html.split('class="detail"')[1];
+  // Model, expression and form: once, at the top, above the prompt.
+  expect((detail.match(/class="selection"/g) ?? []).length).toBe(1);
+  expect(detail).toMatch(/class="selection"[^>]*>[^<]*kiss/);
+  expect(detail.indexOf('class="selection"')).toBeLessThan(detail.indexOf('class="prompt"'));
+
+  // Panels carry the replicate and nothing already said above them.
+  const panels = html.split('class="panel"').slice(1);
+  expect(panels.length).toBeGreaterThan(1);
+  panels.forEach((panel, i) => {
+    // Between the tags: the section still carries data-outcome, which is markup
+    // rather than something a reader sees.
+    const heading = panel.split("<h3>")[1].split("</h3>")[0];
+    expect(heading).toContain(`replicate ${i + 1}`);
+    expect(heading).not.toContain("kiss");
+    expect(heading).not.toContain("grid-only");
+    // An unremarkable outcome is not worth a tag on every panel.
+    expect(heading).not.toContain("drawn");
+    expect(heading).not.toContain("valid");
+  });
+
   state.replicate = "1";
   await setView("index");
-  // grid-only wrote no hex, so the readout is honest about deriving it.
-  expect(stage()).toContain("hex, read off its grid");
+});
 
-  state.form = "hex_only";
-  await setView("index");
-  expect(stage()).toMatch(/<h4>hex<\/h4>/);
-  expect(stage()).not.toContain("read off its grid");
+test("the chosen format survives a re-render", async () => {
+  const { setView, state } = await import("./app.js");
+  await matrix();
+  const fmt = el("x-format");
+  fmt.value = "jpeg";
+  fmt.onchange();
+  expect(state.format).toBe("jpeg");
+
+  // Filtering rebuilds the control; the choice is not a property of the markup.
+  await matrix({ expression: ["happy"] });
+  expect(stage()).toMatch(/value="jpeg" selected/);
+
+  state.format = "png";
+  await matrix();
+});
+
+test("the export wraps the way the page does", async () => {
+  const [first] = await suiteIds();
+
+  // One model: the page wraps its twelve expressions into blocks, so the image
+  // must too. Twelve deep is what the row-and-column exporter would give.
+  await matrix({ model: first });
+  expect(stage()).toContain("blocks cells");
+  painted.length = 0;
+  el("x-save").onclick();
+  const wrapped = painted.find((c) => c.calls.rects > 50)!;
+  expect(wrapped).toBeDefined();
+  // Each expression is a labelled tile, and the canvas is wider than it is tall.
+  expect(wrapped.calls.texts).toContain("happy");
+  expect(wrapped.calls.texts).toContain("nerdy");
+  expect(wrapped.width).toBeGreaterThan(wrapped.height / 2);
+
+  // Every model: back to a table, one row per expression.
+  await matrix();
+  expect(stage()).toContain('class="matrix"');
+  painted.length = 0;
+  el("x-save").onclick();
+  const table = painted.find((c) => c.calls.rects > 50)!;
+  expect(table).toBeDefined();
+  expect(table.calls.texts).toContain("happy");
 });

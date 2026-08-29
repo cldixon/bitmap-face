@@ -210,6 +210,78 @@ export function drawQuads({ rows, columns, cellFor, config, chassis, heading, le
 
 
 /**
+ * Labelled tiles, laid out in a grid.
+ *
+ * What the page does when a single model leaves one column of cells: the rows
+ * wrap into blocks rather than running down the page. The export has to wrap the
+ * same way, or a figure the page arranged three across comes out twelve deep.
+ */
+export function drawTiles({ tiles, config, chassis, across, quadAcross, legend }) {
+  const w = (chassis ? 32 : config.width) * SCALE;
+  const h = (chassis ? 32 : config.height) * SCALE;
+  const INNER = 3;
+  const PADQ = 5;
+  const rowsIn = Math.ceil(quadAcross > 0 ? tiles[0].cells.length / quadAcross : 1);
+  const quadW = quadAcross * w + (quadAcross - 1) * INNER + PADQ * 2;
+  const quadH = rowsIn * h + (rowsIn - 1) * INNER + PADQ * 2;
+  const cellH = TEXT + 8 + quadH;
+
+  const p = palette();
+  const rule = document.createElement("canvas").getContext("2d");
+  rule.font = `${TEXT}px ui-monospace, Menlo, Consolas, monospace`;
+  const keyH = legend ? drawKey(rule, legend, 0, 0, p, { measure: true }) : 0;
+
+  const cols = Math.max(1, Math.min(across, tiles.length));
+  const rows = Math.ceil(tiles.length / cols);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = PAD * 2 + cols * (quadW + GAP_X) + (legend ? LEGEND_GAP + LEGEND_W : 0);
+  canvas.height = PAD * 2 + Math.max(rows * (cellH + GAP_Y), keyH);
+
+  const ctx = canvas.getContext("2d");
+  const { bg, fg, muted } = p;
+  const marked = new Set((legend?.outcomes ?? []).map((o) => o.key));
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = `${TEXT}px ui-monospace, Menlo, Consolas, monospace`;
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+
+  tiles.forEach((tile, i) => {
+    const x = PAD + (i % cols) * (quadW + GAP_X);
+    const y = PAD + Math.floor(i / cols) * (cellH + GAP_Y);
+    ctx.fillStyle = muted;
+    ctx.fillText(tile.label, x, y);
+
+    const top = y + TEXT + 8;
+    ctx.strokeStyle = muted;
+    ctx.globalAlpha = 0.35;
+    ctx.strokeRect(x + 0.5, top + 0.5, quadW - 1, quadH - 1);
+    ctx.globalAlpha = 1;
+
+    tile.cells.forEach((cell, k) => {
+      const bitmap = cell?.bitmap ?? cell;
+      if (!bitmap) return;
+      const key = cell?.outcome;
+      ctx.fillStyle = MARKED[key] && marked.has(key) ? p[MARKED[key]] : fg;
+      paint(
+        ctx,
+        bitmap,
+        x + PADQ + (k % quadAcross) * (w + INNER),
+        top + PADQ + Math.floor(k / quadAcross) * (h + INNER),
+        chassis,
+      );
+    });
+  });
+
+  if (legend) {
+    ctx.font = `${TEXT}px ui-monospace, Menlo, Consolas, monospace`;
+    drawKey(ctx, legend, PAD + cols * (quadW + GAP_X) + LEGEND_GAP, PAD, p);
+  }
+  return canvas;
+}
+
+/**
  * The plate: one face per expression, four across.
  *
  * This is the figure that goes beside the note, so it is laid out for

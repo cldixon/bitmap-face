@@ -95,6 +95,16 @@ table.matrix thead th { padding-bottom: 0.4rem; }
 .key .one { margin: 0.5rem 0 0; color: var(--fg2); font-size: 11px; line-height: 1.4; }
 .key select { width: 100%; font-size: 13px; }
 .key .check.last { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+/* Saving goes with the controls, which stay put, rather than below a figure
+   that can be a page and a half tall. */
+.save { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.save select, .save button { font: inherit; font-size: 12px; padding: 0.25rem 0.5rem;
+                             background: transparent; color: inherit;
+                             border: 1px solid var(--line); border-radius: 3px; }
+.save button { cursor: pointer; }
+.save button:hover { border-color: var(--fg2); }
+.tools .save { margin-top: 0; margin-left: auto; }
+.plate + .save, .stage > .save { margin-bottom: 1.25rem; }
 
 /* One column of cells is a tall ribbon with a page of empty space beside it, so
    the rows wrap into as many columns as the width allows instead. */
@@ -296,65 +306,52 @@ svg .band { fill: var(--amber); opacity: 0.2; }
 .hide-malformed .index .row[data-outcome="malformed"] td { color: var(--fg2); }
 .hide-differs .index .row[data-outcome="differs"] td { color: var(--fg2); }
 
-.detail { display: flex; flex-direction: column; gap: 1.25rem; align-items: flex-start; }
+.detail { display: flex; flex-direction: column; gap: 1.25rem; align-items: stretch; min-width: 0; }
+/* Named once, at the top: everything below it is the same selection. */
+.selection { margin: 0; font-size: 15px; font-weight: normal; }
 /* The bench: controls for the one attempt on the table, with room for more. */
 .tools { display: flex; align-items: flex-end; gap: 1rem; padding-bottom: 1rem;
          border-bottom: 1px solid var(--line); width: 100%; }
-/* The attempt: its faces on the left, its rows on the right. */
-.panel { display: grid; grid-template-columns: max-content minmax(0, 1fr);
-         gap: 0.5rem 2.5rem; align-items: start; }
-/* Every replicate at once: for comparing draws rather than reading one. */
-.panel.spread { display: block; }
-.draws { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 0.75rem; }
-.draws figure { margin: 0; text-align: center; }
-.draws svg { display: block; color: var(--fg); }
-.draws figcaption { margin-top: 0.4rem; font-size: 11px; color: var(--fg2); }
-.draws [data-outcome="malformed"] svg { color: var(--red); }
-.draws [data-outcome="differs"] svg { color: var(--amber); }
-.hide-malformed .draws [data-outcome="malformed"] svg { color: var(--fg); }
-.hide-differs .draws [data-outcome="differs"] svg { color: var(--fg); }
+.panel { display: block; }
+/* Stacked replicates need a line between them, or they read as one long panel. */
+.panel + .panel { padding-top: 1.25rem; border-top: 1px solid var(--line); }
+.panel h3 { margin: 0 0 0.75rem; font-size: 12px; font-weight: normal; color: var(--fg2);
+            text-transform: uppercase; letter-spacing: 0.08em; }
+.panel .tag { margin-left: 0.6rem; }
+.panel[data-outcome="differs"] .tag { color: var(--amber); }
+.panel[data-outcome="malformed"] .tag { color: var(--red); }
 
-/* The attempt across the full width: the face, its rows, and the hex you can
-   take away, rather than a narrow column with space to its right. */
-.spread { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2rem;
-          grid-column: 1 / -1; }
+/* The three things an attempt is, side by side. The two written forms sit at
+   the same line height, so their rows read against each other. */
+.spread { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2rem; }
 .spread .shown { margin: 0; }
 .spread .shown svg { display: block; color: var(--fg); }
 .readout { position: relative; }
-.readout h4 { margin: 0 0 0.4rem; font-size: 11px; font-weight: normal; color: var(--fg2);
+.readout h4 { display: flex; align-items: baseline; gap: 0.4rem; margin: 0 0 0.4rem;
+              font-size: 11px; font-weight: normal; color: var(--fg2);
               text-transform: uppercase; letter-spacing: 0.08em; }
-.readout pre { margin: 0; font-size: 12px; line-height: 1.5; color: var(--fg);
+.readout .from { text-transform: none; letter-spacing: 0; opacity: 0.75; }
+.readout pre { margin: 0; font-size: 12px; line-height: 1.45; color: var(--fg);
                padding: 0.5rem 2.2rem 0.5rem 0.7rem;
                border: 1px solid var(--line); border-radius: 3px; }
+.readout .bad { color: var(--amber); }
+.hide-differs .readout .bad { color: inherit; }
 .copy { position: absolute; top: 1.5rem; right: 0.35rem; display: flex; padding: 0.2rem;
         color: var(--fg2); background: var(--bg); border: 1px solid transparent;
         border-radius: 3px; cursor: pointer; }
 .copy:hover { color: var(--fg); border-color: var(--line); }
 .copy svg + svg, .copy[data-copied] svg:first-child { display: none; }
 .copy[data-copied] svg + svg { display: block; color: var(--fg); }
+/* The prompt behind the selection: one line until asked for, at the top of the
+   column rather than trailing a stack of replicates. */
+.prompt { padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.prompt summary { cursor: pointer; color: var(--fg2); font-size: 12px; }
+.prompt summary:hover { color: var(--fg); }
+.prompt h4 { margin: 1rem 0 0.35rem; font-size: 11px; font-weight: normal; color: var(--fg2);
+             text-transform: uppercase; letter-spacing: 0.08em; }
+.prompt pre { margin: 0; white-space: pre-wrap; font-size: 11px; color: var(--fg2); line-height: 1.45; }
+.prompt .warn { margin: 0.75rem 0 0; color: var(--amber); font-size: 12px; }
 
-.panel h3 { grid-column: 1 / -1; margin: 0; font-size: 13px; font-weight: normal; color: var(--fg2); }
-.panel .tag { margin-left: 0.6rem; }
-.panel[data-outcome="differs"] .tag { color: var(--amber); }
-.panel[data-outcome="malformed"] .tag { color: var(--red); }
-.big { display: flex; gap: 1.5rem; }
-.big figure { margin: 0; }
-.big svg { display: block; color: var(--fg); }
-.big figcaption { margin-top: 0.5rem; font-size: 11px; color: var(--fg2); }
-.rows { font-size: 12px; }
-.rows th { color: var(--fg2); font-size: 11px; border-bottom: 1px solid var(--line); }
-.rows td { padding: 0.05rem 0.6rem; text-align: left; white-space: pre; }
-.rows .n { color: var(--fg2); text-align: right; }
-.rows .bad td { color: var(--amber); }
-/* What was sent to produce the face, on request. */
-.facts { grid-column: 1 / -1; margin-top: 1.25rem; padding-top: 1rem;
-         border-top: 1px solid var(--line); }
-.facts details { margin: 0; }
-.facts summary { cursor: pointer; color: var(--fg2); font-size: 12px; }
-.facts h4 { margin: 1rem 0 0.35rem; font-size: 11px; font-weight: normal; color: var(--fg2);
-            text-transform: uppercase; letter-spacing: 0.08em; }
-.facts pre { margin: 0; white-space: pre-wrap; font-size: 11px; color: var(--fg2); line-height: 1.45; }
-
-.faults { grid-column: 1 / -1; margin: 0.5rem 0 0; padding-left: 1.1rem;
+.faults { margin: 0.75rem 0 0; padding-left: 1.1rem;
           color: var(--red); font-size: 12px; }
 .empty { padding: 2rem 0; color: var(--fg2); }

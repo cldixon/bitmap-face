@@ -10,14 +10,14 @@ export const PAGES = {
   matrix: {
     title: "Matrix",
     intro:
-      "Every parameter at once. Expressions run down, models across, and each cell holds " +
-      "all four written outputs: the two produced on their own, and the pair produced together.",
+      "View the entire experimental dataset in one view." +
+      " Filter and compare across all parameters."
+
   },
   index: {
     title: "Index",
     intro:
-      "Every attempt, one row each. Selecting one shows it in full: the written forms " +
-      "returned, and the rows of the grid set against the hex written for them.",
+      "View individual results from the dataset."
   },
   plate: {
     title: "Plate",
@@ -27,7 +27,7 @@ export const PAGES = {
   },
   method: {
     title: "Method",
-    intro: "How the faces were requested, and how the responses were classified.",
+    intro: "Details on experimental methodology and design.",
   },
 };
 

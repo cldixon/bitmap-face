@@ -8,6 +8,7 @@
  * at which this should become a shared package rather than a mirror.
  */
 export const FILLED = "█";
+export const EMPTY = "·";
 
 export function hexToBitmap(rows, width, height = width) {
   return Array.from({ length: height }, (_, y) => {
@@ -22,6 +23,11 @@ export function gridToBitmap(rows, width, height = width) {
     const chars = Array.from(rows[y] ?? "");
     return Array.from({ length: width }, (_, x) => (chars[x] === FILLED ? 1 : 0));
   });
+}
+
+/** A bitmap back as grid rows, the inverse of `gridToBitmap`. */
+export function draw(bitmap) {
+  return bitmap.map((row) => row.map((bit) => (bit ? FILLED : EMPTY)).join(""));
 }
 
 export function hexFromBitmap(bitmap) {
