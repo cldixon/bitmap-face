@@ -53,7 +53,7 @@ def test_a_run_serialises_to_plain_json() -> None:
         id="x",
         started_at="now",
         condition=condition(),
-        repeat=1,
+        replicate=1,
         calls=[Call(0, ["happy"], 1.0, 10, 20)],
         attempts=[Attempt(expression="happy", tier="easy", well_formed=True, agrees=True)],
         totals=Totals(
@@ -108,7 +108,7 @@ def test_answer_tokens_separate_reasoning_from_output() -> None:
 
 
 def test_the_expression_set_is_part_of_the_cell() -> None:
-    # A run of one expression is not a repeat of a run of twelve. Grouping them
+    # A run of one expression is not a replicate of a run of twelve. Grouping them
     # produced scores averaged over faces that were never attempted.
     full = condition()
     one = condition(expressions=("happy",))
@@ -138,7 +138,7 @@ def test_the_record_carries_what_was_actually_sent() -> None:
         id="x",
         started_at="now",
         condition=condition(),
-        repeat=1,
+        replicate=1,
         calls=[Call(0, ["happy"], 1.0, 10, 20, prompt="draw a happy face")],
         attempts=[Attempt(expression="happy", tier="easy")],
         totals=Totals(
@@ -162,7 +162,7 @@ def test_the_record_carries_what_was_actually_sent() -> None:
 
 def test_the_reference_corpus_is_named_in_the_slug() -> None:
     # "six examples" is not a condition; six faces and six shapes teach
-    # different things and must not be grouped as repeats of each other.
+    # different things and must not be grouped as replicates of each other.
     faces = condition(reference_set=ReferenceSet.FACES)
     shapes = condition(reference_set=ReferenceSet.SHAPES)
     assert faces.slug != shapes.slug

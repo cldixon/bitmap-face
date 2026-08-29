@@ -9,7 +9,7 @@ Read this file to understand what we collect.
 Three ideas, in order of size:
 
     Condition  the cell being tested -- model, target, batching, references.
-               Two runs with the same Condition are repeats of each other.
+               Two runs with the same Condition are replicates of each other.
     Attempt    one requested expression and what came back for it.
     Run        a Condition, the calls it took, and the attempts it produced.
 
@@ -69,11 +69,11 @@ class Batch(StrEnum):
 @dataclass(frozen=True)
 class Condition:
     """
-    One experimental cell. Two runs sharing a Condition are repeats.
+    One experimental cell. Two runs sharing a Condition are replicates.
 
     Everything that could change the answer belongs here, and nothing that
     couldn't -- the id is built from these fields, so an added field changes
-    what counts as a repeat.
+    what counts as a replicate.
     """
 
     model: str
@@ -94,14 +94,14 @@ class Condition:
     width: int = 16
     height: int = 10
     #: Which expressions were asked for. Empty means the whole standard set.
-    #: Part of the cell's identity: a run of one expression is not a repeat of a
+    #: Part of the cell's identity: a run of one expression is not a replicate of a
     #: run of twelve, and grouping them as though it were produces scores
     #: averaged over faces that were never attempted.
     expressions: tuple[str, ...] = ()
 
     @property
     def slug(self) -> str:
-        """A filename-safe name for this cell, stable across repeats."""
+        """A filename-safe name for this cell, stable across replicates."""
         parts = [
             self.model.removeprefix("claude-"),
             self.target.value,
@@ -143,7 +143,7 @@ class Call:
     The token fields are kept apart rather than summed because they answer
     different questions. `input_tokens` is the *uncached* prompt, so with a
     stable system prompt and reference block the true prompt size is all three
-    input fields together -- and drawing one face per call repeats that prefix
+    input fields together -- and drawing one face per call replicates that prefix
     on every call, which is the cost that makes or breaks batching. Of the
     output, `thinking_tokens` is the part that was reasoning rather than answer:
     without it, a model that spent twenty thousand tokens thinking and two
@@ -259,7 +259,7 @@ class Suite:
     id: str
     label: str
     targets: list[str]
-    repeats: int
+    replicates: int
 
 
 @dataclass
@@ -269,7 +269,7 @@ class Run:
     id: str
     started_at: str
     condition: Condition
-    repeat: int
+    replicate: int
     calls: list[Call]
     attempts: list[Attempt]
     totals: Totals

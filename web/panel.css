@@ -45,6 +45,80 @@ button.ghost:hover { border-color: var(--fg2); }
 .subject .field { font-size: 12px; }
 .subject select { font-size: 15px; padding: 0.35rem 0.5rem; }
 
+/* How the figure is shown, rather than what it is of -- so it sits down with
+   the figure instead of sharing a line with the facets that choose the data. */
+.display { display: flex; align-items: center; flex-wrap: wrap; gap: 1.75rem;
+           margin-bottom: 1.25rem; }
+.switches { display: flex; align-items: center; gap: 1.25rem; }
+.check { display: flex; align-items: center; gap: 0.4rem; color: var(--fg2);
+         user-select: none; cursor: pointer; font-size: 12px; }
+.check input { margin: 0; cursor: pointer; }
+.check:has(input:checked) { color: var(--fg); }
+/* The box carries the colour it controls, so the switch is its own key. */
+.check[data-mark="malformed"] input { accent-color: var(--red); }
+.check[data-mark="differs"] input { accent-color: var(--amber); }
+
+/* Three tiers, three treatments, so the hierarchy is visible without labels:
+   underlined tabs for destinations, a boxed strip for the mode within a page,
+   and labelled selects for the values that mode takes. */
+.modes { display: flex; margin-bottom: 1.25rem; }
+.modes button { font: inherit; font-size: 13px; padding: 0.4rem 0.85rem; cursor: pointer;
+                color: var(--fg2); background: transparent;
+                border: 1px solid var(--line); border-left-width: 0; }
+.modes button:first-child { border-left-width: 1px; border-radius: 3px 0 0 3px; }
+.modes button:last-child { border-radius: 0 3px 3px 0; }
+.modes button:hover { color: var(--fg); }
+.modes button[aria-selected="true"] { color: var(--bg); background: var(--fg); border-color: var(--fg); }
+
+/* The matrix packs three levels into one page, so each must be legible as a
+   level: the quad is boxed and tight, the cells are spaced well apart, and the
+   headings sit outside both. */
+.quad { display: grid; grid-template-columns: repeat(var(--across, 2), max-content); gap: 2px;
+        padding: 4px; border: 1px solid var(--line); border-radius: 3px;
+        background: rgba(128,128,128,0.05); }
+.quad .face { padding: 1px; border-radius: 2px; }
+table.matrix { border-collapse: separate; border-spacing: 0.6rem 0.5rem; }
+table.matrix .cell { padding: 0; }
+/* Fixed, so the grid does not slide left when a shorter name is the only one
+   left in the column. */
+table.matrix .rowhead { width: 7rem; }
+table.matrix thead th { padding-bottom: 0.4rem; }
+
+/* The cell diagram is the legend: each position says what was asked for there,
+   in the place it appears in every cell of the page. */
+.key .quadkey { border-collapse: collapse; margin-top: 0.6rem; width: 100%; table-layout: fixed; }
+.key .quadkey td { border: 1px solid var(--line); padding: 0.35rem 0.45rem; vertical-align: top; }
+.key .quadkey b { display: block; font-weight: normal; color: var(--fg); font-size: 12px; }
+.key .quadkey td { text-align: left; }
+.key .quadkey span { display: block; margin-top: 0.15rem; color: var(--fg2);
+                     font-size: 11px; line-height: 1.35; }
+.key .one { margin: 0.5rem 0 0; color: var(--fg2); font-size: 11px; line-height: 1.4; }
+.key select { width: 100%; font-size: 13px; }
+.key .check.last { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+
+/* One column of cells is a tall ribbon with a page of empty space beside it, so
+   the rows wrap into as many columns as the width allows instead. */
+.blocks.cells { --min: 15rem; gap: 1.5rem 2rem; }
+.blocks.cells .block h2 { margin-bottom: 0.4rem; }
+
+/* Headings double as filters: click one to narrow to it. */
+.pin { font: inherit; color: inherit; background: none; border: 0; padding: 0;
+       cursor: pointer; border-bottom: 1px dotted transparent; }
+.pin:hover { border-bottom-color: var(--fg2); }
+
+/* What is currently being excluded, and how to put it back. */
+/* Always present, disabled when there is nothing to put back, so the panel does
+   not shift as filters come and go. */
+.key-head { display: flex; justify-content: flex-end; margin-bottom: 0.75rem; }
+.reset { font: inherit; font-size: 11px; padding: 0.15rem 0.5rem; cursor: pointer;
+         color: var(--fg2); background: transparent;
+         border: 1px solid var(--line); border-radius: 3px; }
+.reset:hover:not(:disabled) { color: var(--fg); border-color: var(--fg2); }
+.reset:disabled { opacity: 0.4; cursor: default; }
+
+/* A sheet is for scanning, so it may run wider than the prose column. */
+.stage-wide { overflow-x: auto; }
+
 /* The artifact is above it, so the control that saves it sits with the artifact. */
 .export { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 2rem;
           padding-top: 1.25rem; border-top: 1px solid var(--line); }
@@ -67,21 +141,51 @@ main { padding: 1.75rem 1.5rem 3rem; }
 .stage { overflow-x: auto; }
 table { border-collapse: collapse; }
 /* The figure and the key that reads it, side by side. */
-.figure { display: grid; grid-template-columns: max-content minmax(11rem, 15rem);
+.figure { display: grid; grid-template-columns: max-content minmax(10rem, 13rem);
           gap: 2.5rem; align-items: start; }
+/* The figure takes the width that is going, which pushes the key to the right
+   edge instead of leaving it stranded mid-page -- and gives the figure a real
+   boundary to scroll within rather than running underneath it. */
+.figure.wide { grid-template-columns: minmax(0, 1fr) 15rem; }
+.figure.wide .comparison { overflow-x: auto; max-width: 100%; }
 .comparison { margin: 0; }
 .comparison h2 { margin: 0 0 0.6rem; font-size: 14px; font-weight: normal; }
-.key section + section { margin-top: 1.5rem; }
+/* A tall figure scrolls past a short key, so the key follows rather than
+   leaving the space beside it empty. */
+.key { position: sticky; top: 1rem; }
+.key section + section { margin-top: 1.25rem; }
+/* The key is the control panel: the choices stack, and the one that needs a
+   diagram carries it directly beneath. */
+.key .picks { display: grid; gap: 0.75rem; margin-bottom: 1.5rem; }
+.key .picks .field { gap: 0.2rem; }
+.key .picks select { width: 100%; }
+.key .picks .row { display: flex; justify-content: space-between; align-items: baseline; }
+.chip-clear { font: inherit; font-size: 11px; padding: 0; cursor: pointer;
+              color: var(--fg2); background: none; border: 0;
+              border-bottom: 1px dotted var(--line); }
+.chip-clear:hover { color: var(--fg); }
+/* Twelve of them, so they wrap rather than stack. Pressed is the selection. */
+.chips { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.1rem; }
+.chip { font: inherit; font-size: 11px; padding: 0.12rem 0.4rem; cursor: pointer;
+        color: var(--fg2); background: transparent;
+        border: 1px solid var(--line); border-radius: 3px; }
+.chip:hover { color: var(--fg); border-color: var(--fg2); }
+.chip[aria-pressed="true"] { color: var(--bg); background: var(--fg); border-color: var(--fg); }
 .key h3 { margin: 0 0 0.6rem; font-size: 11px; font-weight: normal; color: var(--fg2);
           text-transform: uppercase; letter-spacing: 0.08em; }
 .key dl { margin: 0; display: grid; gap: 0.45rem; }
 .key dt { display: flex; align-items: center; gap: 0.4rem; }
-.key dd { margin: 0.1rem 0 0; color: var(--fg2); font-size: 11px; line-height: 1.4; }
+/* The switch sits where the swatch was, and carries the colour it controls. */
+.key .mark { width: 9px; height: 9px; margin: 0; flex: none; cursor: pointer; }
+.key [data-outcome="malformed"] .mark { accent-color: var(--red); }
+.key [data-outcome="differs"] .mark { accent-color: var(--amber); }
+.key .marks > div:has(.mark:not(:checked)) { opacity: 0.5; }
+.key dd { margin: 0.1rem 0 0.5rem; color: var(--fg2); font-size: 11px; line-height: 1.4; }
 .key i { width: 9px; height: 9px; flex: none; border: 1px solid currentColor; background: currentColor; }
 .key [data-outcome="agrees"] i { color: var(--fg); }
 .key [data-outcome="drawn"] i { color: var(--fg); opacity: 0.5; }
-.key [data-outcome="malformed"] i { color: var(--amber); }
-.key [data-outcome="differs"] i { color: var(--red); }
+.key [data-outcome="malformed"] i { color: var(--red); }
+.key [data-outcome="differs"] i { color: var(--amber); }
 .key [data-outcome="missing"] i { color: var(--fg2); background: none; }
 @media (max-width: 1000px) { .figure { grid-template-columns: max-content; } }
 th, td { padding: 0.3rem 0.55rem; text-align: center; vertical-align: middle; font-weight: normal; }
@@ -97,19 +201,25 @@ thead .sub { font-size: 11px; padding-top: 0; }
 
 .face { background: none; border: 1px solid transparent; border-radius: 3px; padding: 3px;
         color: var(--fg); cursor: pointer; line-height: 0; }
-.face:hover { border-color: var(--fg2); }
+.face:hover { border-color: var(--fg2); background: rgba(128,128,128,0.08); }
 .face svg { display: block; color: inherit; }
-.face[data-outcome="malformed"] { color: var(--amber); }
-.face[data-outcome="differs"] { color: var(--red); }
+.face[data-outcome="malformed"] { color: var(--red); }
+.face[data-outcome="differs"] { color: var(--amber); }
 .face[data-outcome="missing"] { opacity: 0.35; }
+
+/* Each mark can be switched off on its own: they are different findings, and
+   only one of them means the answer is unusable. */
+.hide-malformed .face[data-outcome="malformed"] { color: var(--fg); }
+.hide-differs .face[data-outcome="differs"] { color: var(--fg); }
+.hide-differs svg .band { display: none; }
 .void { color: var(--fg2); opacity: 0.5; }
-svg .band { fill: var(--red); opacity: 0.18; }
+svg .band { fill: var(--amber); opacity: 0.2; }
 
 /* form comparison: a block per expression, two across. */
 /* Columns are fluid rather than counted: two when there is room for two, one
    when there is not, at whatever width the window happens to be. */
 .blocks { display: grid; gap: 1.75rem 2.5rem;
-          grid-template-columns: repeat(auto-fit, minmax(min(100%, 27rem), 1fr)); }
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--min, 27rem)), 1fr)); }
 /* The cell stretches; the block does not. Sizing it to its contents centres the
    set in its column and gives the save button a right edge that is the images'
    right edge rather than the column's. */
@@ -154,8 +264,8 @@ svg .band { fill: var(--red); opacity: 0.18; }
 .defs i { width: 9px; height: 9px; flex: none; border: 1px solid currentColor; background: currentColor; }
 .defs [data-outcome="agrees"] i { color: var(--fg); }
 .defs [data-outcome="drawn"] i { color: var(--fg); opacity: 0.5; }
-.defs [data-outcome="malformed"] i { color: var(--amber); }
-.defs [data-outcome="differs"] i { color: var(--red); }
+.defs [data-outcome="malformed"] i { color: var(--red); }
+.defs [data-outcome="differs"] i { color: var(--amber); }
 .defs [data-outcome="missing"] i { color: var(--fg2); background: none; }
 
 /* inspect: index left, attempt right */
@@ -171,30 +281,63 @@ svg .band { fill: var(--red); opacity: 0.18; }
 .index td { padding: 0.25rem 0.5rem; text-align: left; font-size: 12px; color: var(--fg2);
             border-bottom: 1px solid var(--line); white-space: nowrap; }
 .index th + th, .index td + td { border-left: 1px solid var(--line); }
-.index .mark { width: 1.5rem; text-align: center; }
 .index .row { cursor: pointer; }
 .index .row:hover td { color: var(--fg); }
 .index .row[aria-current="true"] td { color: var(--fg); background: rgba(128,128,128,0.09); }
 .index .row[aria-current="true"] .lead { font-weight: 500; }
 .index .row:focus-visible { outline: 1px solid var(--fg2); outline-offset: -1px; }
 .count { margin: 0.6rem 0 0; color: var(--fg2); font-size: 11px; }
-.index .row i { display: inline-block; width: 8px; height: 8px; border: 1px solid currentColor;
-                background: currentColor; }
-.index .row i[data-outcome="agrees"] { color: var(--fg); }
-.index .row i[data-outcome="drawn"] { color: var(--fg); opacity: 0.5; }
-.index .row i[data-outcome="malformed"] { color: var(--amber); }
-.index .row i[data-outcome="differs"] { color: var(--red); }
-.index .row i[data-outcome="missing"] { color: var(--fg2); background: none; }
+
+/* The entry itself is the mark. Only the two failures and a missing answer say
+   anything; everything else is the normal case and stays quiet. */
+.index .row[data-outcome="malformed"] td { color: var(--red); }
+.index .row[data-outcome="differs"] td { color: var(--amber); }
+.index .row[data-outcome="missing"] td { opacity: 0.45; }
+.hide-malformed .index .row[data-outcome="malformed"] td { color: var(--fg2); }
+.hide-differs .index .row[data-outcome="differs"] td { color: var(--fg2); }
 
 .detail { display: flex; flex-direction: column; gap: 1.25rem; align-items: flex-start; }
 /* The bench: controls for the one attempt on the table, with room for more. */
 .tools { display: flex; align-items: flex-end; gap: 1rem; padding-bottom: 1rem;
          border-bottom: 1px solid var(--line); width: 100%; }
-.panel h3 { margin: 0 0 0.75rem; font-size: 13px; font-weight: normal; color: var(--fg2); }
+/* The attempt: its faces on the left, its rows on the right. */
+.panel { display: grid; grid-template-columns: max-content minmax(0, 1fr);
+         gap: 0.5rem 2.5rem; align-items: start; }
+/* Every replicate at once: for comparing draws rather than reading one. */
+.panel.spread { display: block; }
+.draws { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 0.75rem; }
+.draws figure { margin: 0; text-align: center; }
+.draws svg { display: block; color: var(--fg); }
+.draws figcaption { margin-top: 0.4rem; font-size: 11px; color: var(--fg2); }
+.draws [data-outcome="malformed"] svg { color: var(--red); }
+.draws [data-outcome="differs"] svg { color: var(--amber); }
+.hide-malformed .draws [data-outcome="malformed"] svg { color: var(--fg); }
+.hide-differs .draws [data-outcome="differs"] svg { color: var(--fg); }
+
+/* The attempt across the full width: the face, its rows, and the hex you can
+   take away, rather than a narrow column with space to its right. */
+.spread { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2rem;
+          grid-column: 1 / -1; }
+.spread .shown { margin: 0; }
+.spread .shown svg { display: block; color: var(--fg); }
+.readout { position: relative; }
+.readout h4 { margin: 0 0 0.4rem; font-size: 11px; font-weight: normal; color: var(--fg2);
+              text-transform: uppercase; letter-spacing: 0.08em; }
+.readout pre { margin: 0; font-size: 12px; line-height: 1.5; color: var(--fg);
+               padding: 0.5rem 2.2rem 0.5rem 0.7rem;
+               border: 1px solid var(--line); border-radius: 3px; }
+.copy { position: absolute; top: 1.5rem; right: 0.35rem; display: flex; padding: 0.2rem;
+        color: var(--fg2); background: var(--bg); border: 1px solid transparent;
+        border-radius: 3px; cursor: pointer; }
+.copy:hover { color: var(--fg); border-color: var(--line); }
+.copy svg + svg, .copy[data-copied] svg:first-child { display: none; }
+.copy[data-copied] svg + svg { display: block; color: var(--fg); }
+
+.panel h3 { grid-column: 1 / -1; margin: 0; font-size: 13px; font-weight: normal; color: var(--fg2); }
 .panel .tag { margin-left: 0.6rem; }
-.panel[data-outcome="differs"] .tag { color: var(--red); }
-.panel[data-outcome="malformed"] .tag { color: var(--amber); }
-.big { display: flex; gap: 1.5rem; margin-bottom: 1.25rem; }
+.panel[data-outcome="differs"] .tag { color: var(--amber); }
+.panel[data-outcome="malformed"] .tag { color: var(--red); }
+.big { display: flex; gap: 1.5rem; }
 .big figure { margin: 0; }
 .big svg { display: block; color: var(--fg); }
 .big figcaption { margin-top: 0.5rem; font-size: 11px; color: var(--fg2); }
@@ -202,6 +345,16 @@ svg .band { fill: var(--red); opacity: 0.18; }
 .rows th { color: var(--fg2); font-size: 11px; border-bottom: 1px solid var(--line); }
 .rows td { padding: 0.05rem 0.6rem; text-align: left; white-space: pre; }
 .rows .n { color: var(--fg2); text-align: right; }
-.rows .bad td { color: var(--red); }
-.faults { margin: 0.75rem 0 0; padding-left: 1.1rem; color: var(--amber); font-size: 12px; }
+.rows .bad td { color: var(--amber); }
+/* What was sent to produce the face, on request. */
+.facts { grid-column: 1 / -1; margin-top: 1.25rem; padding-top: 1rem;
+         border-top: 1px solid var(--line); }
+.facts details { margin: 0; }
+.facts summary { cursor: pointer; color: var(--fg2); font-size: 12px; }
+.facts h4 { margin: 1rem 0 0.35rem; font-size: 11px; font-weight: normal; color: var(--fg2);
+            text-transform: uppercase; letter-spacing: 0.08em; }
+.facts pre { margin: 0; white-space: pre-wrap; font-size: 11px; color: var(--fg2); line-height: 1.45; }
+
+.faults { grid-column: 1 / -1; margin: 0.5rem 0 0; padding-left: 1.1rem;
+          color: var(--red); font-size: 12px; }
 .empty { padding: 2rem 0; color: var(--fg2); }

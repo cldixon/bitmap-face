@@ -4,7 +4,7 @@ bitface — experiments in whether a language model can work in a 1-bit bitmap.
     bitface expressions                       the standard set
     bitface draw happy                        one face, one call
     bitface draw happy --target transcribe
-    bitface run --repeats 3 --concurrency 4   the whole set, three times
+    bitface run --replicates 3 --concurrency 4   the whole set, three times
     bitface export --to ../website/src/data/face-runs
     bitface panel                             the control panel
 """
@@ -200,7 +200,7 @@ def build(
     Assemble the cell.
 
     `names` is part of the cell's identity, because a run of two expressions is
-    not a repeat of a run of twelve, and grouping them averages a score over
+    not a replicate of a run of twelve, and grouping them averages a score over
     faces that were never attempted. The full standard set is the default and
     carries no tag, so the common case stays readable.
     """
@@ -223,7 +223,7 @@ def build(
 def execute_and_report(
     condition: Condition,
     names: list[str] | None,
-    repeats: int,
+    replicates: int,
     concurrency: int,
     max_tokens: int,
     *,
@@ -239,13 +239,13 @@ def execute_and_report(
 
     if condition.context and concurrency > 1:
         console.print(
-            f"[dim]--context {condition.context} chains the calls, so within a repeat they stay "
-            f"sequential; {concurrency} workers run across repeats.[/]"
+            f"[dim]--context {condition.context} chains the calls, so within a replicate they stay "
+            f"sequential; {concurrency} workers run across replicates.[/]"
         )
 
     console.print(
         f"[bold]{condition.slug}[/]  ·  {len(wanted)} expression(s)  ·  "
-        f"{repeats} repeat(s)  ·  {calls_each * repeats} call(s)  ·  {concurrency} worker(s)\n"
+        f"{replicates} replicate(s)  ·  {calls_each * replicates} call(s)  ·  {concurrency} worker(s)\n"
     )
 
     lock = Lock()
@@ -259,14 +259,14 @@ def execute_and_report(
         transient=True,
     ) as progress:
         bars = {
-            r: progress.add_task(f"repeat {r}/{repeats}", total=len(wanted))
-            for r in range(1, repeats + 1)
+            r: progress.add_task(f"replicate {r}/{replicates}", total=len(wanted))
+            for r in range(1, replicates + 1)
         }
 
-        def on_attempt(repeat: int, attempt: Attempt) -> None:
+        def on_attempt(replicate: int, attempt: Attempt) -> None:
             mark, colour = MARKS[outcome(attempt)]
             with lock:
-                progress.advance(bars[repeat])
+                progress.advance(bars[replicate])
                 # When each attempt is about to be rendered in full, the
                 # one-line version underneath it is just noise.
                 if render:
@@ -275,14 +275,14 @@ def execute_and_report(
                 progress.console.print(
                     f"  {mark} [bold]{attempt.expression}[/] [dim]{attempt.tier}[/]"
                     + (f"  [{colour}]{detail}[/]" if detail else "")
-                    + (f" [dim]r{repeat}[/]" if repeats > 1 else "")
+                    + (f" [dim]r{replicate}[/]" if replicates > 1 else "")
                 )
 
         runs = run_condition(
             Anthropic(),
             condition,
             wanted,
-            repeats=repeats,
+            replicates=replicates,
             max_tokens=max_tokens,
             concurrency=concurrency,
             on_attempt=on_attempt,
@@ -310,7 +310,7 @@ def execute_and_report(
 def summarise(runs: list[Run]) -> None:
     table = Table(box=None, pad_edge=False, header_style="dim")
     for name, justify in (
-        ("repeat", "right"),
+        ("replicate", "right"),
         ("formed", "right"),
         ("agreed", "right"),
         ("rate", "right"),
@@ -325,7 +325,7 @@ def summarise(runs: list[Run]) -> None:
         t = run.totals
         rate = "n/a" if t.agreement_rate is None else f"{t.agreement_rate:.0%}"
         table.add_row(
-            str(run.repeat),
+            str(run.replicate),
             f"{t.well_formed}/{t.returned}",
             f"{t.agreed}/{t.measurable}",
             rate,
@@ -347,7 +347,7 @@ def summarise(runs: list[Run]) -> None:
                 else f"{rates[0]:.0%}"
             )
             console.print(
-                f"\n[bold]agreement across repeats[/]  {sum(rates) / len(rates):.0%}  ({spread})"
+                f"\n[bold]agreement across replicates[/]  {sum(rates) / len(rates):.0%}  ({spread})"
             )
     console.print()
 
@@ -399,7 +399,7 @@ def draw(
             no_copy=no_copy,
         ),
         names,
-        repeats=1,
+        replicates=1,
         concurrency=1,
         max_tokens=max_tokens,
         into=DRAFTS,
@@ -419,14 +419,14 @@ def run(
     context: CtxOpt = 0,
     effort: EffortOpt = None,
     max_tokens: MaxTokOpt = 48000,
-    repeats: Annotated[
-        int, typer.Option("--repeats", "-n", help="Independent runs of the cell.")
+    replicates: Annotated[
+        int, typer.Option("--replicates", "-n", help="Independent runs of the cell.")
     ] = 1,
     concurrency: Annotated[
         int, typer.Option("--concurrency", "-c", help="Calls in flight at once.")
     ] = 4,
 ) -> None:
-    """The whole expression set, optionally repeated."""
+    """The whole expression set, in one or more replicates."""
     execute_and_report(
         build(
             model,
@@ -440,7 +440,7 @@ def run(
             no_copy=no_copy,
         ),
         expression,
-        repeats=repeats,
+        replicates=replicates,
         concurrency=concurrency,
         max_tokens=max_tokens,
     )
@@ -485,8 +485,8 @@ def suite(
     reference_set: SetOpt = ReferenceSet.SHAPES,
     no_copy: NoCopyOpt = False,
     batch: BatchOpt = Batch.ALL,
-    repeats: Annotated[
-        int, typer.Option("--repeats", "-n", help="Independent runs per target.")
+    replicates: Annotated[
+        int, typer.Option("--replicates", "-n", help="Independent runs per target.")
     ] = 3,
     concurrency: Annotated[int, typer.Option("--concurrency", "-c")] = 4,
     max_tokens: MaxTokOpt = 48000,
@@ -507,12 +507,12 @@ def suite(
         id=suite_id,
         label=f"{model.removeprefix('claude-')} · {references or 'no'} {reference_set.value if references else ''} refs".strip(),
         targets=[str(t) for t in order],
-        repeats=repeats,
+        replicates=replicates,
     )
 
-    console.print(f"[bold]suite {suite_id}[/]  ·  {len(order)} targets × {repeats} repeats\n")
+    console.print(f"[bold]suite {suite_id}[/]  ·  {len(order)} targets × {replicates} replicates\n")
 
-    #: grid_only's drawings, per repeat, are what transcribe is handed.
+    #: grid_only's drawings, per replicate, are what transcribe is handed.
     source_grids: dict[int, dict[str, list[str]]] = {}
     collected: list[Run] = []
 
@@ -541,7 +541,7 @@ def suite(
         runs = execute_and_report(
             condition,
             None,
-            repeats,
+            replicates,
             concurrency,
             max_tokens,
             source_grids=source_grids if target is Target.TRANSCRIBE else None,
@@ -567,7 +567,7 @@ def suite(
 
         if target is Target.GRID_ONLY:
             for run in runs:
-                source_grids[run.repeat] = {
+                source_grids[run.replicate] = {
                     a.expression: a.grid for a in run.attempts if a.grid and a.well_formed
                 }
             #: transcribe can only ask about faces that came out well formed, so a

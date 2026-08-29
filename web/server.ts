@@ -92,7 +92,7 @@ async function listSuites() {
         no_copy: c.no_copy,
         started_at: records[0].started_at,
         targets: SHOWN.filter((t) => t in counts),
-        repeats: Math.max(...records.map((r) => r.repeat)),
+        replicates: Math.max(...records.map((r) => r.replicate)),
         counts,
         output_tokens: records.reduce((n, r) => n + r.totals.output_tokens, 0),
         thinking_tokens: records.reduce((n, r) => n + (r.totals.thinking_tokens ?? 0), 0),
@@ -105,9 +105,9 @@ async function listSuites() {
 /**
  * One suite, pivoted for looking at.
  *
- * The records are per run -- one target, one repeat. The panel wants the
+ * The records are per run -- one target, one replicate. The panel wants the
  * opposite: for one expression, every way it was asked for. So this inverts
- * them into cells[expression][target] = one entry per repeat, and hands over
+ * them into cells[expression][target] = one entry per replicate, and hands over
  * the prompts and token counts alongside rather than in a second request.
  */
 async function suite(id: string) {
@@ -124,7 +124,7 @@ async function suite(id: string) {
       cells[attempt.expression] ??= {};
       cells[attempt.expression][target] ??= [];
       cells[attempt.expression][target].push({
-        repeat: record.repeat,
+        replicate: record.replicate,
         run: record.id,
         outcome: classify(attempt),
         grid: attempt.grid,
@@ -139,7 +139,7 @@ async function suite(id: string) {
     }
   }
   for (const byTarget of Object.values(cells)) {
-    for (const entries of Object.values(byTarget)) entries.sort((a, b) => a.repeat - b.repeat);
+    for (const entries of Object.values(byTarget)) entries.sort((a, b) => a.replicate - b.replicate);
   }
 
   const c = records[0].condition;
@@ -163,16 +163,30 @@ async function suite(id: string) {
     expressions: records[0].attempts.map((a: any) => a.expression),
     tiers,
     targets: SHOWN.filter((t) => records.some((r) => r.condition.target === t)),
-    repeats: Math.max(...records.map((r) => r.repeat)),
+    replicates: Math.max(...records.map((r) => r.replicate)),
     cells,
     runs: records.map((r) => ({
       id: r.id,
       target: r.condition.target,
-      repeat: r.repeat,
+      replicate: r.replicate,
       started_at: r.started_at,
       totals: r.totals,
       system: r.prompts?.system ?? null,
-      user: r.calls?.[0]?.prompt ?? null,
+      // Per call, not per run: with `batch: one` each expression has its own
+      // call, and the panel can then attribute cost to a single face. With
+      // `batch: all` there is one call covering the set, and `expressions`
+      // records how many faces its numbers actually paid for.
+      calls: (r.calls ?? []).map((c: any) => ({
+        index: c.index,
+        expressions: c.expressions ?? [],
+        prompt: c.prompt ?? null,
+        input_tokens: c.input_tokens ?? 0,
+        output_tokens: c.output_tokens ?? 0,
+        thinking_tokens: c.thinking_tokens ?? 0,
+        cache_read_input_tokens: c.cache_read_input_tokens ?? 0,
+        cache_creation_input_tokens: c.cache_creation_input_tokens ?? 0,
+        duration_seconds: c.duration_seconds ?? 0,
+      })),
     })),
   };
 }

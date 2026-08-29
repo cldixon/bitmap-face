@@ -7,23 +7,17 @@ export const PAGES = {
       "A record of what language models do when asked to draw a 16 × 10 icon in the " +
       "format the original Macintosh stored it in.",
   },
-  sheet: {
-    title: "Form comparison",
+  matrix: {
+    title: "Matrix",
     intro:
-      "One model across the full expression set, in every written form it was asked " +
-      "for. Each block is an expression.",
+      "Every parameter at once. Expressions run down, models across, and each cell holds " +
+      "all four written outputs: the two produced on their own, and the pair produced together.",
   },
-  compare: {
-    title: "Model comparison",
+  index: {
+    title: "Index",
     intro:
-      "One expression across every model, in all three written forms, with the prompt " +
-      "held fixed. Only the model and its effort setting differ.",
-  },
-  inspect: {
-    title: "Inspect",
-    intro:
-      "A single attempt in full: each written form returned, and the rows of the grid " +
-      "set against the hex written for them.",
+      "Every attempt, one row each. Selecting one shows it in full: the written forms " +
+      "returned, and the rows of the grid set against the hex written for them.",
   },
   plate: {
     title: "Plate",
@@ -49,6 +43,51 @@ export const FORMS = {
   hex_only: "hex",
   both: "combined",
   transcribe: "transcribe",
+};
+
+/**
+ * The four outputs in one cell, in reading order.
+ *
+ * Columns are the written form, rows are how it was asked for -- so the cell is
+ * itself a small crossing, and the same position means the same thing in every
+ * cell of the page.
+ */
+export const QUAD = [
+  { target: "grid_only", form: "grid" },
+  { target: "hex_only", form: "hex" },
+  { target: "both", form: "grid" },
+  { target: "both", form: "hex" },
+];
+
+/**
+ * What the form facet can be narrowed to.
+ *
+ * The four cell positions are already these five options: `combined` is the
+ * pair, and each half of it can be asked for on its own. Filtering to one is
+ * how a reader drills all the way down to a single icon.
+ */
+export const FORM_FILTERS = [
+  ["all", "all"],
+  ["grid_only", "grid-only"],
+  ["hex_only", "hex-only"],
+  ["both", "combined pair"],
+  ["both:grid", "grid-combined"],
+  ["both:hex", "hex-combined"],
+];
+
+/**
+ * A line for each cell position, keyed by the option that selects it.
+ *
+ * The diagram is the legend for both the cell and the selector: each position
+ * names the option that isolates it, so the layout, its explanation, and the
+ * control are one thing. The full sentences are on Method.
+ */
+export const FORM_BRIEF = {
+  grid_only: "drawn as a character grid",
+  hex_only: "written straight as hex",
+  "both:grid": "the grid half of a combined answer",
+  "both:hex": "the hex half of that same answer",
+  both: "both halves, from one answer",
 };
 
 export const TARGETS = {
@@ -107,8 +146,8 @@ export const METHOD = [
   ],
   [
     "Repetition",
-    "Every condition is run more than once. Nothing here is a single sample, and the " +
-      "try selector moves between them.",
+    "Every condition is run more than once, and each run is a replicate. Nothing here " +
+      "rests on one of them; the replicate selector moves between them.",
   ],
   [
     "Classification",

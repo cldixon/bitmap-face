@@ -13,7 +13,7 @@ With one exception, which is load-bearing: `--context N` shows each call the
 faces already drawn in that run, so those calls form a chain and *must* run in
 order. Parallelising them would silently change the experiment -- every call
 would see an empty context and the condition would no longer be the one named in
-the record. So a context run parallelises across repeats and stays sequential
+the record. So a context run parallelises across replicates and stays sequential
 within one; everything else parallelises freely.
 """
 
@@ -243,16 +243,16 @@ def transcribe_source(
 
 @dataclass
 class Task:
-    """One API call: which repeat it belongs to, and which expressions it covers."""
+    """One API call: which replicate it belongs to, and which expressions it covers."""
 
-    repeat: int
+    replicate: int
     index: int
     group: list[Expression]
 
 
-def plan(c: Condition, wanted: tuple[Expression, ...], repeats: int) -> list[Task]:
+def plan(c: Condition, wanted: tuple[Expression, ...], replicates: int) -> list[Task]:
     groups = [list(wanted)] if c.batch is Batch.ALL else [[e] for e in wanted]
-    return [Task(r, i, g) for r in range(1, repeats + 1) for i, g in enumerate(groups)]
+    return [Task(r, i, g) for r in range(1, replicates + 1) for i, g in enumerate(groups)]
 
 
 def _call_for(
@@ -299,7 +299,7 @@ def _call_for(
 
 
 def _assemble(
-    c: Condition, repeat: int, results: list[tuple[list[Attempt], Call]], started: datetime
+    c: Condition, replicate: int, results: list[tuple[list[Attempt], Call]], started: datetime
 ) -> Run:
     calls = [call for _, call in results]
     attempts = [a for group, _ in results for a in group]
@@ -319,10 +319,10 @@ def _assemble(
     )
     stamp = started.strftime("%Y%m%dT%H%M%SZ")
     return Run(
-        id=f"{stamp}-{c.slug}-r{repeat}",
+        id=f"{stamp}-{c.slug}-r{replicate}",
         started_at=started.isoformat(),
         condition=c,
-        repeat=repeat,
+        replicate=replicate,
         calls=calls,
         attempts=attempts,
         totals=totals,
@@ -335,7 +335,7 @@ def run_condition(
     c: Condition,
     wanted: tuple[Expression, ...],
     *,
-    repeats: int = 1,
+    replicates: int = 1,
     max_tokens: int = 48000,
     concurrency: int = 1,
     on_attempt: Callable[[int, Attempt], None] | None = None,
@@ -343,31 +343,31 @@ def run_condition(
     suite: Suite | None = None,
 ) -> list[Run]:
     """
-    Run a condition `repeats` times and return one Run each.
+    Run a condition `replicates` times and return one Run each.
 
-    `on_attempt(repeat, attempt)` fires as each expression is scored, so a caller
+    `on_attempt(replicate, attempt)` fires as each expression is scored, so a caller
     can show progress while the pool works. It is called from worker threads.
     """
     started = datetime.now(UTC)
-    tasks = plan(c, wanted, repeats)
+    tasks = plan(c, wanted, replicates)
     indices = sorted({t.index for t in tasks})
     results: dict[tuple[int, int], tuple[list[Attempt], Call]] = {}
     lock = Lock()
 
     def record(task: Task, outcome: tuple[list[Attempt], Call]) -> None:
         with lock:
-            results[(task.repeat, task.index)] = outcome
+            results[(task.replicate, task.index)] = outcome
         if on_attempt:
             for attempt in outcome[0]:
-                on_attempt(task.repeat, attempt)
+                on_attempt(task.replicate, attempt)
 
-    def chain(repeat: int) -> None:
-        """One repeat, in order, threading each face's grid into the next prompt."""
+    def chain(replicate: int) -> None:
+        """One replicate, in order, threading each face's grid into the next prompt."""
         drawn: list[tuple[str, list[str]]] = []
-        for task in [t for t in tasks if t.repeat == repeat]:
+        for task in [t for t in tasks if t.replicate == replicate]:
             context = drawn[-c.context :] if drawn else None
             outcome = _call_for(
-                client, c, task, max_tokens, context, (source_grids or {}).get(repeat)
+                client, c, task, max_tokens, context, (source_grids or {}).get(replicate)
             )
             record(task, outcome)
             for attempt in outcome[0]:
@@ -376,16 +376,16 @@ def run_condition(
 
     workers = max(1, concurrency)
     if c.context:
-        # Sequential within a repeat, parallel across them: the chain is the
+        # Sequential within a replicate, parallel across them: the chain is the
         # experiment, so it cannot be broken up.
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            for future in [pool.submit(chain, r) for r in range(1, repeats + 1)]:
+            for future in [pool.submit(chain, r) for r in range(1, replicates + 1)]:
                 future.result()
     else:
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
                 pool.submit(
-                    _call_for, client, c, t, max_tokens, None, (source_grids or {}).get(t.repeat)
+                    _call_for, client, c, t, max_tokens, None, (source_grids or {}).get(t.replicate)
                 ): t
                 for t in tasks
             }
@@ -393,8 +393,8 @@ def run_condition(
                 record(task, future.result())
 
     runs = [
-        _assemble(c, repeat, [results[(repeat, i)] for i in indices], started)
-        for repeat in range(1, repeats + 1)
+        _assemble(c, replicate, [results[(replicate, i)] for i in indices], started)
+        for replicate in range(1, replicates + 1)
     ]
     for run in runs:
         run.suite = suite

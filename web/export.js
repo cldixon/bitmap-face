@@ -52,7 +52,7 @@ function wrap(ctx, text, width) {
 //: `missing` maps to null deliberately -- it draws as an outline, matching the
 //: on-screen key. `??` would swallow that, so the lookup is explicit.
 function swatchFor(key, p) {
-  const map = { agrees: p.fg, drawn: p.muted, malformed: p.amber, differs: p.red, missing: null };
+  const map = { agrees: p.fg, drawn: p.muted, malformed: p.red, differs: p.amber, missing: null };
   return key in map ? map[key] : p.muted;
 }
 
@@ -117,29 +117,37 @@ function paint(ctx, bitmap, x, y, chassis, scale = SCALE) {
 }
 
 /**
- * A grid of faces with row and column headings.
+ * The matrix: a grid of cells, each holding a small grid of its own.
  *
- * `rows` and `columns` come straight from the view, so the exported image has
- * the same shape as the screen — including `both` occupying two columns.
+ * The quad is outlined and tight while the cells are spaced apart, because at
+ * this density the only thing keeping the two levels apart is the gap between
+ * them.
  */
-export function drawGrid({ rows, columns, cellFor, config, chassis, legend, heading }) {
-  const side = chassis ? 32 : null;
-  const w = (side ?? config.width) * SCALE;
-  const h = (side ?? config.height) * SCALE;
-  const p = palette();
+//: Only these two outcomes tint a face. Everything else is drawn in the ink the
+//: icons are meant to be.
+const MARKED = { malformed: "red", differs: "amber" };
 
-  // Measure the key first: the canvas has to be tall enough for whichever of the
-  // figure and the key runs longer, and resizing a canvas clears it.
+export function drawQuads({ rows, columns, cellFor, config, chassis, heading, legend, across = 2 }) {
+  const w = (chassis ? 32 : config.width) * SCALE;
+  const h = (chassis ? 32 : config.height) * SCALE;
+  const INNER = 3;
+  const PADQ = 5;
+  const quadW = across * w + (across - 1) * INNER + PADQ * 2;
+  const quadH = across * h + (across - 1) * INNER + PADQ * 2;
+  const lead = heading ? TEXT * 2 : 0;
+
+  const p = palette();
   const rule = document.createElement("canvas").getContext("2d");
   rule.font = `${TEXT}px ui-monospace, Menlo, Consolas, monospace`;
   const keyH = legend ? drawKey(rule, legend, 0, 0, p, { measure: true }) : 0;
-  const lead = heading ? TEXT * 2 : 0;
 
   const canvas = document.createElement("canvas");
-  canvas.width = PAD * 2 + ROWHEAD + columns.length * (w + GAP_X) + (legend ? LEGEND_GAP + LEGEND_W : 0);
+  canvas.width =
+    PAD * 2 + ROWHEAD + columns.length * (quadW + GAP_X) + (legend ? LEGEND_GAP + LEGEND_W : 0);
   canvas.height =
-    PAD * 2 + lead + Math.max(HEAD + rows.length * (h + GAP_Y) - GAP_Y, keyH);
+    PAD * 2 + lead + Math.max(HEAD + rows.length * (quadH + GAP_Y), keyH);
 
+  const marked = new Set((legend?.outcomes ?? []).map((o) => o.key));
   const ctx = canvas.getContext("2d");
   const { bg, fg, muted } = p;
   ctx.fillStyle = bg;
@@ -154,140 +162,52 @@ export function drawGrid({ rows, columns, cellFor, config, chassis, legend, head
   }
 
   const top = PAD + lead;
-  const colX = (i) => PAD + ROWHEAD + i * (w + GAP_X);
+  const colX = (i) => PAD + ROWHEAD + i * (quadW + GAP_X);
 
   ctx.textAlign = "center";
   columns.forEach((c, i) => {
     ctx.fillStyle = muted;
-    ctx.fillText(c.label ?? c.target, colX(i) + w / 2, top);
-    if (c.split) ctx.fillText(c.form, colX(i) + w / 2, top + TEXT + 4);
+    ctx.fillText(c.label, colX(i) + quadW / 2, top);
   });
 
   rows.forEach((row, r) => {
-    const y = top + HEAD + r * (h + GAP_Y);
+    const y = top + HEAD + r * (quadH + GAP_Y);
     ctx.textAlign = "right";
     ctx.fillStyle = muted;
-    ctx.fillText(row.label, PAD + ROWHEAD - 22, y + h / 2 - TEXT / 2);
-    columns.forEach((c, i) => {
-      const bitmap = cellFor(row, c);
-      if (!bitmap) return;
-      ctx.fillStyle = fg;
-      paint(ctx, bitmap, colX(i), y, chassis);
+    ctx.fillText(row.label, PAD + ROWHEAD - 22, y + quadH / 2 - TEXT / 2);
+
+    columns.forEach((column, i) => {
+      const x = colX(i);
+      ctx.strokeStyle = muted;
+      ctx.globalAlpha = 0.35;
+      ctx.strokeRect(x + 0.5, y + 0.5, quadW - 1, quadH - 1);
+      ctx.globalAlpha = 1;
+      //: A face is tinted only if its outcome is one the key still explains, so
+      //: switching a mark off removes it from the image and from the key at once.
+      cellFor(row, column).forEach((cell, k) => {
+        const bitmap = cell?.bitmap ?? cell;
+        if (!bitmap) return;
+        const key = cell?.outcome;
+        ctx.fillStyle = MARKED[key] && marked.has(key) ? p[MARKED[key]] : fg;
+        paint(
+          ctx,
+          bitmap,
+          x + PADQ + (k % across) * (w + INNER),
+          y + PADQ + Math.floor(k / across) * (h + INNER),
+          chassis,
+        );
+      });
     });
   });
 
   if (legend) {
     ctx.font = `${TEXT}px ui-monospace, Menlo, Consolas, monospace`;
-    drawKey(ctx, legend, PAD + ROWHEAD + columns.length * (w + GAP_X) + LEGEND_GAP, top, p);
+    drawKey(ctx, legend, PAD + ROWHEAD + columns.length * (quadW + GAP_X) + LEGEND_GAP, top, p);
   }
 
   return canvas;
 }
 
-/** One try, large, with its written forms beside it. */
-export function drawInspect({ panels, config, chassis }) {
-  const BIG = SCALE * 2;
-  const side = chassis ? 32 : null;
-  const w = (side ?? config.width) * BIG;
-  const h = (side ?? config.height) * BIG;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = PAD * 2 + Math.max(760, panels.length * (w * 2 + GAP_X * 2));
-  canvas.height = PAD * 2 + HEAD + h + TEXT * (config.height + 3);
-
-  const ctx = canvas.getContext("2d");
-  const { bg, fg, muted } = palette();
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.font = `${TEXT}px ui-monospace, Menlo, Consolas, monospace`;
-  ctx.textBaseline = "top";
-  ctx.textAlign = "left";
-
-  let x = PAD;
-  for (const panel of panels) {
-    ctx.fillStyle = muted;
-    ctx.fillText(`${panel.target}  ${panel.outcome}`, x, PAD);
-    panel.forms.forEach((form, i) => {
-      const fx = x + i * (w + GAP_X);
-      ctx.fillStyle = fg;
-      const scaled = form.bitmap.map((row) => row);
-      const bits = chassis ? compose(scaled) : scaled;
-      bits.forEach((row, by) =>
-        row.forEach((bit, bx) => {
-          if (bit) ctx.fillRect(fx + bx * BIG, PAD + HEAD + by * BIG, BIG, BIG);
-        }),
-      );
-      ctx.fillStyle = muted;
-      ctx.fillText(form.label, fx, PAD + HEAD + h + 8);
-    });
-    (panel.hex ?? []).forEach((line, i) => {
-      ctx.fillStyle = panel.bad?.has(i) ? "#c0392b" : muted;
-      ctx.fillText(line, x, PAD + HEAD + h + TEXT * (i + 3));
-    });
-    x += panel.forms.length * (w + GAP_X) + GAP_X;
-  }
-
-  return canvas;
-}
-
-
-/**
- * Blocks: one labelled group per expression, laid out across the page.
- *
- * Mirrors the form comparison view, where a block is an expression and each
- * group inside it is a written form -- `combined` holding two faces from a
- * single attempt, so they sit together under one caption.
- */
-export function drawBlocks({ blocks, config, chassis, across = 2 }) {
-  const w = (chassis ? 32 : config.width) * SCALE;
-  const h = (chassis ? 32 : config.height) * SCALE;
-  const INNER = 6;
-  const BETWEEN = 30;
-
-  const groupW = (g) => g.bitmaps.length * w + (g.bitmaps.length - 1) * INNER;
-  const blockW = (b) =>
-    b.groups.reduce((n, g) => n + groupW(g), 0) + (b.groups.length - 1) * BETWEEN;
-  const cellW = Math.max(...blocks.map(blockW));
-  const cellH = TEXT + 10 + h + TEXT + 10;
-
-  const cols = Math.min(across, blocks.length);
-  const rows = Math.ceil(blocks.length / cols);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = PAD * 2 + cols * cellW + (cols - 1) * GAP_X * 2;
-  canvas.height = PAD * 2 + rows * cellH + (rows - 1) * GAP_Y;
-
-  const ctx = canvas.getContext("2d");
-  const { bg, fg, muted } = palette();
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.font = `${TEXT}px ui-monospace, Menlo, Consolas, monospace`;
-  ctx.textBaseline = "top";
-
-  blocks.forEach((block, i) => {
-    const x = PAD + (i % cols) * (cellW + GAP_X * 2);
-    const y = PAD + Math.floor(i / cols) * (cellH + GAP_Y);
-
-    ctx.textAlign = "left";
-    ctx.fillStyle = fg;
-    ctx.fillText(block.label, x, y);
-
-    let gx = x;
-    for (const group of block.groups) {
-      group.bitmaps.forEach((bitmap, k) => {
-        if (!bitmap) return;
-        ctx.fillStyle = fg;
-        paint(ctx, bitmap, gx + k * (w + INNER), y + TEXT + 10, chassis);
-      });
-      ctx.textAlign = "center";
-      ctx.fillStyle = muted;
-      ctx.fillText(group.label, gx + groupW(group) / 2, y + TEXT + 10 + h + 8);
-      gx += groupW(group) + BETWEEN;
-    }
-  });
-
-  return canvas;
-}
 
 /**
  * The plate: one face per expression, four across.

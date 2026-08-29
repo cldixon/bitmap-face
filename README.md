@@ -31,7 +31,7 @@ set -a; . ./.env; set +a
 bitface expressions                         # the standard set
 bitface draw happy                          # one face, one call — the atomic unit
 bitface draw happy --target transcribe
-bitface run --model claude-opus-5 --repeats 3
+bitface run --model claude-opus-5 --replicates 3
 bitface run --references 0                  # blind: no examples at all
 bitface suite --model claude-sonnet-5 --effort medium -n 2 \
         --references 4 --reference-set shapes --no-copy
@@ -54,7 +54,7 @@ closely from the references.
 | `--references` | ROM faces shown as examples; `0` is the blind control |
 | `--context` | prior faces shown when drawing one at a time |
 | `--effort` | `low`…`max`; unavailable on Haiku 4.5 |
-| `--repeats` | independent runs of the same cell |
+| `--replicates` | independent runs of the same cell |
 
 The four targets answer different questions. **`both`** asks for the grid and the
 hex together and measures whether they agree — consistency inside one
@@ -102,7 +102,7 @@ What survived and is worth re-testing:
 - Haiku's failures were a different species: whole rows unrelated to its own
   grid, not near misses.
 - Haiku swung between 3/4 and 1/7 agreement on the same condition, so single
-  runs prove very little. Hence `--repeats`.
+  runs prove very little. Hence `--replicates`.
 
 
 ## Layout
@@ -124,7 +124,7 @@ data/runs/                  run records
 ```
 
 A **suite** is the unit of comparison: one model at one effort with one
-reference setting, swept across all four targets and repeated *n* times. The
+reference setting, swept across all four targets, in *n* replicates. The
 targets chain — `grid_only` runs first, and the grids it produces are what
 `transcribe` is asked to encode, so that cell asks "can you encode the thing you
 just drew" rather than "can you encode someone else's face". If nothing came out

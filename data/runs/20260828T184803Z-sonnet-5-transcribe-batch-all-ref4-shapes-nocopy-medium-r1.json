@@ -15,7 +15,7 @@
     "expressions": [],
     "slug": "sonnet-5-transcribe-batch-all-ref4-shapes-nocopy-medium"
   },
-  "repeat": 1,
+  "replicate": 1,
   "calls": [
     {
       "index": 0,
@@ -817,7 +817,7 @@
       "hex_only",
       "both"
     ],
-    "repeats": 2
+    "replicates": 2
   },
   "schema_version": 4
 }

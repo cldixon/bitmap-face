@@ -10,9 +10,8 @@
   <nav id="nav" class="nav" role="tablist" aria-label="View">
     <span class="mark">bitface</span>
     <button role="tab" data-view="overview">overview</button>
-    <button role="tab" data-view="sheet">form comparison</button>
-    <button role="tab" data-view="compare">model comparison</button>
-    <button role="tab" data-view="inspect">inspect</button>
+    <button role="tab" data-view="matrix">matrix</button>
+    <button role="tab" data-view="index">index</button>
     <button role="tab" data-view="plate">plate</button>
     <button role="tab" data-view="method">method</button>
   </nav>
@@ -26,13 +25,13 @@
         <label class="field" data-for="suites">model<select id="suites"></select></label>
         <label class="field" data-for="expression">expression<select id="expression"></select></label>
         <label class="field" data-for="targets">form<select id="targets"></select></label>
-      </div>
-      <div class="controls">
-        <label class="field" data-for="repeat">try<select id="repeat"></select></label>
-        <button id="chassis" type="button" class="ghost"></button>
+        <label class="field" data-for="replicate">replicate<select id="replicate"></select></label>
       </div>
     </div>
     <dl id="details" class="details"></dl>
+    <div id="display" class="display">
+      <label class="check"><input type="checkbox" id="chassis"> desktop chassis</label>
+    </div>
     <div id="stage" class="stage"></div>
     <div id="export" class="export">
       <select id="format" aria-label="Format"></select>

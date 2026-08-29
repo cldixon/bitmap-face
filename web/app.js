@@ -8,21 +8,20 @@
  * can disagree, and collapsing them hides the only thing it has to say.
  */
 import { compose, gridToBitmap, hexFromBitmap, hexToBitmap, svg } from "./bitmap.js";
-import { download, downloadBytes, drawBlocks, drawGrid, drawInspect, drawPlate } from "./export.js";
+import { download, downloadBytes, drawPlate, drawQuads } from "./export.js";
 import { encodeGIF } from "./gif.js";
-import { FORMS, METHOD, OUTCOMES, OVERVIEW, PAGES, RANK, TARGETS } from "./copy.js";
+import { FORM_BRIEF, FORM_FILTERS, FORMS, METHOD, OUTCOMES, OVERVIEW, PAGES, QUAD, RANK, TARGETS } from "./copy.js";
 
 const el = (id) => document.getElementById(id);
-const [navEl, barEl, exportEl, suitesEl, expressionEl, targetsEl, repeatEl, chassisEl] =
-  ["nav", "bar", "export", "suites", "expression", "targets", "repeat", "chassis"].map(el);
+const [navEl, barEl, displayEl, exportEl, suitesEl, expressionEl, targetsEl, replicateEl, chassisEl] =
+  ["nav", "bar", "display", "export", "suites", "expression", "targets", "replicate", "chassis"].map(el);
 const [titleEl, introEl, detailsEl, stageEl, formatEl] = ["title", "intro", "details", "stage", "format"].map(el);
 
 /** Which toolbar fields each destination uses. */
 const CONTROLS = {
   overview: [],
-  sheet: ["suites", "repeat"],
-  compare: ["expression", "repeat"],
-  inspect: [],
+  matrix: [], // every control lives in the key, beside what it explains
+  index: [], // its controls sit with the attempt, on the bench
   plate: ["suites", "targets"],
   method: [],
 };
@@ -30,9 +29,8 @@ const CONTROLS = {
 /** Which of them belong in the address. Inspect filters in-page but is still linkable. */
 const PARAMS = {
   overview: [],
-  sheet: ["suite", "try"],
-  compare: ["expr", "try"],
-  inspect: ["suite", "expr", "form", "try"],
+  matrix: ["model", "expr", "form", "replicate"],
+  index: ["suite", "expr", "form", "replicate"],
   plate: ["suite", "target"],
   method: [],
 };
@@ -41,10 +39,15 @@ const state = {
   view: "overview",
   expression: null,
   target: "all",
-  repeat: "all",
+  replicate: "all",
   frame: 0,
   chassis: true,
+  marks: { malformed: true, differs: true },
   form: null,
+  //: Matrix starts unfiltered and narrows from there; "all" is a real value.
+  //: `expression` is a list because comparing three of the twelve is as
+  //: reasonable as comparing one or all. Empty means no filter.
+  narrow: { model: "all", expression: [], form: "all" },
   filters: { model: "all", expression: "all", form: "all" },
 };
 let suite = null;
@@ -52,7 +55,9 @@ let catalogue = [];
 const loaded = new Map();
 let timer = null;
 
-const DATA_VIEWS = ["sheet", "compare", "inspect", "plate"];
+const DATA_VIEWS = ["matrix", "index", "plate"];
+//: Pages that show a single written form, so "all forms" is not on offer.
+const ONE_FORM = ["expressions", "plate"];
 
 const label = (o) => OUTCOMES[o]?.[0] ?? o;
 const formName = (t) => FORMS[t] ?? t;
@@ -61,11 +66,46 @@ const SAVE_ICON =
   'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
   '<path d="M8 1.5v8m0 0L5 6.5m3 3 3-3M2.5 11v2.5h11V11"/></svg>';
 
-const chassisLabel = () => (state.chassis ? "Remove chassis" : "Add chassis");
+/** The request behind this face: its prompt, and the run it belonged to. */
+function requestFor(target, rep, expression) {
+  const run = suite.runs.find((r) => r.target === target && String(r.replicate) === String(rep));
+  if (!run) return null;
+  const call =
+    (run.calls ?? []).find((c) => (c.expressions ?? []).includes(expression)) ?? run.calls?.[0];
+  return call ? { prompt: call.prompt, system: run.system } : null;
+}
 
-const titleCase = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
-//: Without the chassis the icon is a different picture, so the title says so.
-const figureTitle = () => titleCase(state.expression) + (state.chassis ? "" : " (no chassis)");
+/** Which controls a view offers. Everything that asks goes through here. */
+//: The outcomes a reader can choose not to have marked.
+const MARKABLE = new Set(["malformed", "differs"]);
+
+/**
+ * The four things a model actually returned, each named by the option that
+ * isolates it. `combined` is one attempt but two faces, and in a list of every
+ * output they are two entries.
+ */
+const LEAVES = QUAD.map((q) => ({ ...q, key: q.target === "both" ? `both:${q.form}` : q.target }));
+const leafName = (key) => Object.fromEntries(FORM_FILTERS)[key] ?? key;
+
+//: Views that carry the chassis switch themselves, in their key or their bench.
+const OWN_CHASSIS = ["matrix", "index"];
+
+const controlsFor = (view) => CONTROLS[view];
+
+
+
+/**
+ * The cell positions a form filter keeps.
+ *
+ * "both:grid" is the grid half of the combined answer, on its own -- the last
+ * step of drilling down, where a cell is a single icon.
+ */
+function quadFor(form) {
+  if (form === "all") return QUAD;
+  const [target, half] = String(form).split(":");
+  return QUAD.filter((q) => q.target === target && (!half || q.form === half));
+}
+
 const short = (m) => m.replace("claude-", "");
 const suiteName = (s) => [short(s.config?.model ?? s.model), s.config?.effort ?? s.effort].filter(Boolean).join(" ");
 
@@ -90,12 +130,12 @@ function bitmapOf(entry, form, config) {
   return entry.grid ? gridToBitmap(entry.grid, w, h) : null;
 }
 
-/** The try on show: the animation frame, or the selected one. */
+/** The replicate on show: the animation frame, or the selected one. */
 function entryAt(from, name, target) {
   const all = from.cells[name]?.[target] ?? [];
   if (!all.length) return null;
-  if (state.repeat === "all") return all[state.frame % all.length];
-  return all.find((e) => String(e.repeat) === state.repeat) ?? null;
+  if (state.replicate === "all") return all[state.frame % all.length];
+  return all.find((e) => String(e.replicate) === state.replicate) ?? null;
 }
 
 /** The attempt that best represents a cell, for the plate. */
@@ -119,36 +159,17 @@ function faceSVG(entry, form, from, scale) {
 
 function faceButton(entry, column, from, name, scale) {
   if (!entry) return `<span class="void">—</span>`;
+  //: The leaf is the exact output this face stands for, so the index opens on
+  //: it rather than on whichever half of a combined answer comes first.
+  const leaf = column.target === "both" ? `both:${column.form}` : column.target;
   return `<button class="face" data-outcome="${entry.outcome}" data-suite="${esc(from.id)}"
-     data-name="${esc(name)}" data-target="${column.target}" data-repeat="${entry.repeat}"
-     title="${label(entry.outcome)}">${faceSVG(entry, column.form, from, scale)}</button>`;
-}
-
-function tableHTML(rows, columns, scale = 6) {
-  const top = columns
-    .map((c) =>
-      c.split === "first"
-        ? `<th colspan="2" class="split-first" title="${esc(TARGETS[c.target])}">${c.label}</th>`
-        : c.split === "last"
-          ? ""
-          : `<th rowspan="2" title="${esc(TARGETS[c.target])}">${c.label}</th>`,
-    )
-    .join("");
-  const sub = columns.map((c) => (c.split ? `<th class="sub split-${c.split}">${c.form}</th>` : "")).join("");
-  const body = rows
-    .map(
-      ({ label: rl, sub: rsub, name, from }) =>
-        `<tr><th class="rowhead"><span>${esc(rl)}</span>${rsub ? `<span class="dim">${esc(rsub)}</span>` : ""}</th>` +
-        columns
-          .map((c) => {
-            const cls = ["cell", c.split && `split-${c.split}`].filter(Boolean).join(" ");
-            return `<td class="${cls}">${faceButton(entryAt(from, name, c.target), c, from, name, scale)}</td>`;
-          })
-          .join("") +
-        `</tr>`,
-    )
-    .join("");
-  return `<table><thead><tr><th rowspan="2"></th>${top}</tr><tr>${sub}</tr></thead><tbody>${body}</tbody></table>`;
+     data-name="${esc(name)}" data-target="${column.target}" data-leaf="${leaf}"
+     data-replicate="${entry.replicate}" title="Inspect icon">${faceSVG(
+       entry,
+       column.form,
+       from,
+       scale,
+     )}</button>`;
 }
 
 /** One face per expression, four across. The shape a figure wants. */
@@ -164,6 +185,88 @@ function plateHTML(from, target, pick) {
 }
 
 // --------------------------------------------------------------------------- views
+
+/**
+ * The key that reads a figure: what each form asked for, and what each outcome
+ * means. `lead` is for a page whose cells need explaining before its colours do.
+ */
+/**
+ * The key, which is also the controls.
+ *
+ * The form was being said three times over -- a selector, a diagram, and a list
+ * of definitions. Here it is said once: the selector sits above the diagram, and
+ * the diagram carries the descriptions in the positions they describe.
+ */
+function keyHTML(lead = "") {
+  const chosen = state.narrow.form;
+  const picked = state.narrow.expression;
+  const options = FORM_FILTERS.map(([v, t]) => option(v, t, chosen)).join("");
+
+  //: Every position names the option that isolates it, so the diagram reads the
+  //: dropdown as well as the cell. Four real cells rather than a spanned row:
+  //: the bottom pair are two faces, and a rule through the middle of one wide
+  //: cell would run through its own text.
+  const LABEL = Object.fromEntries(FORM_FILTERS);
+  const cell = (v) => `<td><b>${LABEL[v]}</b><span>${FORM_BRIEF[v]}</span></td>`;
+  const shape =
+    chosen === "all"
+      ? `<table class="quadkey">
+         <tr>${cell("grid_only")}${cell("hex_only")}</tr>
+         <tr>${cell("both:grid")}${cell("both:hex")}</tr></table>`
+      : chosen === "both"
+        ? `<table class="quadkey"><tr>${cell("both:grid")}${cell("both:hex")}</tr></table>`
+        : `<p class="one">${FORM_BRIEF[chosen]}</p>`;
+
+  //: Only the outcomes a reader can switch. A valid face needs no explaining and
+  //: a missing one is its own evidence; the full set is on Method.
+  const outcomes = Object.entries(OUTCOMES)
+    .filter(([k]) => MARKABLE.has(k))
+    .map(
+      ([k, [name, meaning]]) =>
+        `<div data-outcome="${k}"><dt><input type="checkbox" class="mark" data-mark="${k}"${
+          state.marks[k] ? " checked" : ""
+        } aria-label="mark ${esc(name)}">${name}</dt><dd>${meaning}</dd></div>`,
+    )
+    .join("");
+
+  const facets = `<div class="picks">
+      <label class="field">model<select id="k-model">${modelOptions(state.narrow.model)}</select></label>
+      <div class="field">
+        <span class="row">expression${
+          picked.length ? `<button class="chip-clear" data-clear="expression">clear</button>` : ""
+        }</span>
+        <div class="chips">${(suite?.expressions ?? [])
+          .map(
+            (n) =>
+              `<button class="chip" data-expr="${esc(n)}" aria-pressed="${String(
+                picked.includes(n),
+              )}">${esc(n)}</button>`,
+          )
+          .join("")}</div>
+      </div>
+      <label class="field">form<select id="k-form">${options}</select></label>
+      ${shape}
+      <label class="field">replicate<select id="k-replicate">${replicateOptions(
+        state.replicate,
+        replicateCount(),
+      )}</select></label>
+    </div>`;
+
+  const narrowed =
+    state.narrow.model !== "all" || state.narrow.form !== "all" || picked.length > 0;
+
+  return `<aside class="key">
+      ${lead}
+      <div class="key-head"><button id="k-reset" class="reset"${
+        narrowed ? "" : " disabled"
+      }>reset</button></div>
+      ${facets}
+      <section><h3>Outcomes</h3><dl class="marks">${outcomes}</dl></section>
+      <label class="check last"><input type="checkbox" class="chassis-check"${
+        state.chassis ? " checked" : ""
+      }> desktop chassis</label>
+    </aside>`;
+}
 
 function renderProse(sections) {
   stageEl.innerHTML = `<div class="prose">${sections
@@ -190,7 +293,7 @@ function renderMethod() {
     ["references", c.references ? `${c.references}, ${c.reference_set}` : "none"],
     ["copy directive", c.no_copy ? "instructed not to reproduce them" : "none"],
     ["grid", `${c.width} × ${c.height} pixels`],
-    ["tries per condition", String(suite.repeats)],
+    ["replicates per condition", String(suite.replicates)],
   ]
     .map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`)
     .join("");
@@ -205,51 +308,152 @@ function renderMethod() {
     </div>`;
 }
 
-/** One model, every expression, every form: a block each. */
-function renderSheet() {
-  const groups = columnsFor(suite.targets).reduce((acc, c) => {
-    const last = acc.at(-1);
-    if (last && last.target === c.target) last.columns.push(c);
-    else acc.push({ target: c.target, label: c.label, columns: [c] });
-    return acc;
-  }, []);
 
-  const blocks = suite.expressions
-    .map((name) => {
-      const forms = groups
-        .map(
-          (g) =>
-            `<figure><div class="pair">${g.columns
-              .map((c) => faceButton(entryAt(suite, name, c.target), c, suite, name, 6))
-              .join("")}</div><figcaption>${g.label}</figcaption></figure>`,
-        )
-        .join("");
-      return `<section class="block"><h2>${esc(name)}</h2>
-        <button class="snap" data-only="${esc(name)}" title="Export ${esc(name)}"
-          aria-label="Export ${esc(name)}">${SAVE_ICON}</button>
-        <div class="forms">${forms}</div></section>`;
-    })
-    .join("");
-  stageEl.innerHTML = `<div class="blocks">${blocks}</div>`;
+/**
+ * Everything at once: expressions down, models across, four outputs per cell.
+ *
+ * Collapsing the form axis into the cell means all three parameters are on one
+ * page. It only reads if the levels stay visually distinct -- the quad is boxed
+ * and tight, the cells are spaced apart, so a reader can tell which faces belong
+ * together without counting.
+ */
+/**
+ * Everything, then less of it.
+ *
+ * Three orthogonal facets, each defaulting to "all". Narrowing one does not
+ * change the page's structure, only how much of it there is: filtering models
+ * or expressions removes columns or rows, and filtering forms changes what sits
+ * inside a cell -- four outputs, two, or one. The cell keeps its shape either
+ * way, which is why the earlier separate pages were all this page filtered.
+ */
+/**
+ * How big the faces can be, and how many blocks fit on a line.
+ *
+ * Filtering frees space, and leaving it empty wastes the page while scaling by a
+ * step function overflows it. So the size is solved for the width that is
+ * actually there: the largest that still fits, clamped so a full grid stays
+ * legible and a single icon does not become a poster.
+ *
+ * The arithmetic mirrors the stylesheet's gaps rather than measuring them. It is
+ * approximate on purpose -- the figure scrolls if it is ever wrong, and the
+ * clamps keep the error small.
+ */
+const KEY_WIDTH = 240 + 40; // the aside and the gap beside it
+const ROW_HEAD = 112; // 7rem
+const CELL_GAP = 20;
+const QUAD_PAD = 10;
+const MIN_SCALE = 4;
+const MAX_SCALE = 13;
+
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+
+function figureWidth() {
+  //: Falls back to a typical window when nothing has been laid out yet, so the
+  //: first render is sensible and tests are deterministic.
+  const stage = stageEl.clientWidth || 1200;
+  return Math.max(360, stage - KEY_WIDTH);
 }
 
-function renderCompare() {
-  const suites = catalogue.map((s) => loaded.get(s.id)).filter(Boolean);
-  const targets = [...new Set(suites.flatMap((s) => s.targets))];
-  const rows = suites.map((s) => ({ label: suiteName(s), name: state.expression, from: s }));
-  const forms = targets.map((t) => `<div><dt>${formName(t)}</dt><dd>${TARGETS[t]}</dd></div>`).join("");
-  const outcomes = Object.entries(OUTCOMES)
-    .map(([k, [name, meaning]]) => `<div data-outcome="${k}"><dt><i></i>${name}</dt><dd>${meaning}</dd></div>`)
-    .join("");
-  stageEl.innerHTML = `<div class="figure">
-      <figure class="comparison">
-        <h2>${esc(figureTitle())}</h2>${tableHTML(rows, columnsFor(targets), 8)}
-      </figure>
-      <aside class="key">
-        <section><h3>Forms</h3><dl>${forms}</dl></section>
-        <section><h3>Outcomes</h3><dl>${outcomes}</dl></section>
-      </aside>
+/** What one face actually measures on screen at a given scale. */
+function faceWidthAt(scale) {
+  //: `faceSVG` halves the scale for the chassis, which is 32 wide rather than
+  //: 16. Solving against the requested scale rather than the drawn size is how
+  //: you end up with everything at half the width you asked for.
+  return state.chassis ? 32 * Math.max(2, Math.round(scale / 2)) : 16 * scale;
+}
+
+function layoutFor({ columns, across, ribbon }) {
+  const avail = figureWidth();
+  const quad = (scale) => across * faceWidthAt(scale) + (across - 1) * 2 + QUAD_PAD;
+
+  //: Search downwards for the largest that fits rather than solving for it: the
+  //: chassis rounds, so the algebra and the rendered width disagree.
+  const largest = (fits) => {
+    for (let scale = MAX_SCALE; scale > MIN_SCALE; scale--) if (fits(scale)) return scale;
+    return MIN_SCALE;
+  };
+
+  if (!ribbon) {
+    const scale = largest((n) => ROW_HEAD + columns * (quad(n) + CELL_GAP) <= avail);
+    return { scale, min: null };
+  }
+
+  //: One model wraps into blocks, so the choice is between bigger faces and more
+  //: per line. Prefer more columns while the faces stay a usable size.
+  for (const want of [4, 3, 2]) {
+    const scale = largest((n) => want * (quad(n) + CELL_GAP) <= avail);
+    if (scale >= 6) return { scale, min: quad(scale) + CELL_GAP };
+  }
+  const scale = largest((n) => quad(n) + CELL_GAP <= avail);
+  return { scale, min: quad(scale) + CELL_GAP };
+}
+
+function matrixParts() {
+  const { model, expression, form } = state.narrow;
+  const every = catalogue.map((s) => loaded.get(s.id)).filter(Boolean);
+  const suites = model === "all" ? every : every.filter((s) => s.id === model);
+  const allNames = every[0]?.expressions ?? [];
+  const names = expression.length ? allNames.filter((n) => expression.includes(n)) : allNames;
+  const quad = quadFor(form);
+  const across = Math.min(2, quad.length);
+
+  //: One model is a tall ribbon with a page of blank space beside it, so its
+  //: rows wrap into blocks instead of stacking in a single column.
+  const ribbon = suites.length === 1;
+  const { scale, min } = layoutFor({ columns: suites.length, across, ribbon });
+
+  const cell = (from, name) =>
+    quad
+      .map(({ target, form: f }) => {
+        if (!from.targets.includes(target)) return `<span class="void">—</span>`;
+        return faceButton(entryAt(from, name, target), { target, form: f }, from, name, scale);
+      })
+      .join("");
+
+  const quadOf = (from, name) => `<div class="quad" style="--across:${across}">${cell(from, name)}</div>`;
+
+  const figure = ribbon
+    ? `<div class="blocks cells" style="--min:${min}px">${names
+        .map(
+          (name) =>
+            `<section class="block"><h2><button class="pin" data-expr="${esc(name)}">${esc(name)}</button></h2>` +
+            `${quadOf(suites[0], name)}</section>`,
+        )
+        .join("")}</div>`
+    : `<table class="matrix"><thead><tr><th></th>${suites
+        .map((s) => `<th><button class="pin" data-model="${esc(s.id)}">${esc(suiteName(s))}</button></th>`)
+        .join("")}</tr></thead><tbody>${names
+        .map(
+          (name) =>
+            `<tr><th class="rowhead"><button class="pin" data-expr="${esc(name)}">${esc(name)}</button></th>` +
+            suites.map((s) => `<td class="cell">${quadOf(s, name)}</td>`).join("") +
+            `</tr>`,
+        )
+        .join("")}</tbody></table>`;
+
+  return { figure };
+}
+
+function renderMatrix() {
+  const { figure } = matrixParts();
+  stageEl.innerHTML = `<div class="figure wide">
+      <figure id="figure" class="comparison">${figure}</figure>
+      ${keyHTML()}
     </div>`;
+}
+
+/**
+ * Advance the cycle without rebuilding the page around it.
+ *
+ * Only the faces change between frames. Re-rendering the whole stage would also
+ * rebuild the key, which closes an open dropdown every 700ms and makes the form
+ * selector unusable while the animation runs.
+ */
+function renderFrame() {
+  const host = state.view === "matrix" ? el("figure") : null;
+  if (!host) return render();
+  host.innerHTML = matrixParts().figure;
+  wire();
 }
 
 function renderPlate() {
@@ -257,111 +461,218 @@ function renderPlate() {
   stageEl.innerHTML = plateHTML(suite, target, bestAt);
 }
 
-/** Every attempt as a row -- model, expression, form -- beside the selected one. */
+/** Every output as a row -- model, expression, form -- beside the selected one. */
 function renderInspect() {
-  const rep = state.repeat === "all" ? "1" : state.repeat;
+  const rep = state.replicate === "all" ? "1" : state.replicate;
   const suites = catalogue.map((s) => loaded.get(s.id)).filter(Boolean);
-  const rows = suites.flatMap((s) =>
-    s.expressions.flatMap((name) => s.targets.map((target) => ({ from: s, name, target }))),
+  const rows = suites.flatMap((from) =>
+    from.expressions.flatMap((name) =>
+      LEAVES.filter((leaf) => from.targets.includes(leaf.target)).map((leaf) => ({ from, name, leaf })),
+    ),
   );
   const f = state.filters;
   const shown = rows.filter(
     (r) =>
       (f.model === "all" || r.from.id === f.model) &&
       (f.expression === "all" || r.name === f.expression) &&
-      (f.form === "all" || r.target === f.form),
+      (f.form === "all" || r.leaf.key === f.form),
   );
 
-  const option = (value, text, current) =>
-    `<option value="${esc(value)}"${value === current ? " selected" : ""}>${esc(text)}</option>`;
-  const allTargets = [...new Set(suites.flatMap((s) => s.targets))];
   const filters = `<div class="filters">
-      <select id="f-model">${[option("all", "model", f.model)]
-        .concat(suites.map((s) => option(s.id, suiteName(s), f.model)))
+      <select id="f-model">${[option("all", "every model", f.model)]
+        .concat(suites.map((x) => option(x.id, suiteName(x), f.model)))
         .join("")}</select>
-      <select id="f-expression">${[option("all", "expression", f.expression)]
+      <select id="f-expression">${[option("all", "every expression", f.expression)]
         .concat((suites[0]?.expressions ?? []).map((n) => option(n, n, f.expression)))
         .join("")}</select>
-      <select id="f-form">${[option("all", "form", f.form)]
-        .concat(allTargets.map((t) => option(t, formName(t), f.form)))
+      <select id="f-form">${[option("all", "every form", f.form)]
+        .concat(LEAVES.map((leaf) => option(leaf.key, leafName(leaf.key), f.form)))
         .join("")}</select>
     </div>`;
 
   const index = shown
-    .map(({ from, name, target }) => {
-      const entry = (from.cells[name]?.[target] ?? []).find((e) => String(e.repeat) === rep);
+    .map(({ from, name, leaf }) => {
+      const entry = (from.cells[name]?.[leaf.target] ?? []).find((e) => String(e.replicate) === rep);
       const outcome = entry?.outcome ?? "missing";
-      const current = from.id === suite.id && name === state.expression && target === state.form;
+      const current = from.id === suite.id && name === state.expression && leaf.key === state.form;
+      //: The row itself carries the outcome. A column of swatches beside a
+      //: hundred and forty rows is a column mostly saying nothing happened;
+      //: colouring the entry says the same thing only where it is true.
       return `<tr class="row" tabindex="0" data-suite="${esc(from.id)}" data-name="${esc(name)}"
-          data-target="${target}" aria-current="${String(current)}">
-          <td>${esc(suiteName(from))}</td><td class="lead">${esc(name)}</td><td>${formName(target)}</td>
-          <td class="mark"><i data-outcome="${outcome}" title="${label(outcome)}"></i></td>
+          data-target="${leaf.key}" data-outcome="${outcome}" title="${label(outcome)}"
+          aria-current="${String(current)}">
+          <td>${esc(suiteName(from))}</td><td class="lead">${esc(name)}</td>
+          <td>${leafName(leaf.key)}</td>
         </tr>`;
     })
     .join("");
 
-  //: The tools sit with the attempt rather than in the page toolbar: this is the
-  //: bench where one result is taken apart, and it will grow more of them.
-  const tries = Array.from(
-    { length: suite.repeats },
-    (_, i) => `<option value="${i + 1}"${String(i + 1) === rep ? " selected" : ""}>try ${i + 1}</option>`,
-  ).join("");
+  const samples = replicateOptions(state.replicate, replicateCount());
   const tools = `<div class="tools">
-      <label class="field">try<select id="t-try">${tries}</select></label>
-      <button id="t-chassis" type="button" class="ghost">${chassisLabel()}</button>
+      <label class="field">replicate<select id="t-replicate">${samples}</select></label>
+      <label class="check"><input type="checkbox" class="chassis-check"${
+        state.chassis ? " checked" : ""
+      }> desktop chassis</label>
     </div>`;
 
   stageEl.innerHTML = `<div class="explorer">
       <div class="index">${filters}
         <div class="scroll"><table>
-          <thead><tr><th>model</th><th>expression</th><th>form</th><th></th></tr></thead>
+          <thead><tr><th>model</th><th>expression</th><th>form</th></tr></thead>
           <tbody>${index}</tbody>
         </table></div>
         <p class="count">${shown.length} of ${rows.length}</p></div>
-      <div class="detail">${tools}${inspectPanel(rep)}</div>
+      <div class="detail">${tools}${inspectPanel()}</div>
     </div>`;
 }
 
-/** The selected attempt, in full. */
-function inspectPanel(rep) {
-  const target = state.form ?? suite.targets[0];
-  const all = suite.cells[state.expression]?.[target] ?? [];
-  const entry = all.find((e) => String(e.repeat) === rep) ?? all[0];
-  if (!entry) return `<p class="empty">Nothing recorded for this one.</p>`;
-  const forms = columnsFor([target])
-    .map((c) =>
-      bitmapOf(entry, c.form, suite.config)
-        ? `<figure>${faceSVG(entry, c.form, suite, 14)}<figcaption>${c.form}</figcaption></figure>`
-        : "",
-    )
-    .join("");
+/** The selected output, in full -- or every replicate of it, side by side. */
+function inspectPanel() {
+  const leaf = LEAVES.find((l) => l.key === state.form) ?? LEAVES[0];
+  const all = suite.cells[state.expression]?.[leaf.target] ?? [];
+  if (!all.length) return `<p class="empty">Nothing recorded for this one.</p>`;
+
+  const head = (entry, extra = "") =>
+    `<h3 title="${esc(TARGETS[leaf.target])}">${esc(suiteName(suite))} · ${esc(state.expression)} · ${leafName(
+      leaf.key,
+    )}${extra}<span class="tag">${label(entry.outcome)}</span></h3>`;
+
+  //: Every replicate at once, for comparing draws rather than reading one.
+  if (state.replicate === "all") {
+    const cards = all
+      .map(
+        (entry) =>
+          `<figure class="draw" data-outcome="${entry.outcome}">${faceSVG(entry, leaf.form, suite, 10)}
+           <figcaption>replicate ${entry.replicate} · ${label(entry.outcome)}</figcaption></figure>`,
+      )
+      .join("");
+    return `<section class="panel spread" data-outcome="${all[0].outcome}">
+        <h3>${esc(suiteName(suite))} · ${esc(state.expression)} · ${leafName(leaf.key)}
+          <span class="dim">${all.length} replicates</span></h3>
+        <div class="draws">${cards}</div>
+      </section>`;
+  }
+
+  const entry = all.find((e) => String(e.replicate) === state.replicate) ?? all[0];
+  const bitmap = bitmapOf(entry, leaf.form, suite.config);
+
+  //: Whatever hex this output amounts to: what the model wrote, or -- where it
+  //: only drew -- what its drawing comes to. Either is the thing a reader wants
+  //: to take away, so either is what the copy gives them.
+  const grid = entry.grid ?? entry.given_grid;
+  const written = entry.hex?.length ? entry.hex : null;
+  const implied = entry.hex_from_grid?.length
+    ? entry.hex_from_grid
+    : grid
+      ? hexFromBitmap(gridToBitmap(grid, suite.config.width, grid.length))
+      : null;
+  const hex = written ?? implied;
+  const readout = hex
+    ? `<div class="readout">
+        <h4>${written ? "hex" : "hex, read off its grid"}</h4>
+        <button class="copy" data-copy="${esc(hex.join("\n"))}" title="Copy hex"
+          aria-label="Copy hex">${COPY_ICON}${TICK_ICON}</button>
+        <pre>${esc(hex.join("\n"))}</pre>
+      </div>`
+    : "";
+
   return `<section class="panel" data-outcome="${entry.outcome}">
-      <h3 title="${esc(TARGETS[target])}">${esc(suiteName(suite))} · ${esc(state.expression)} · ${formName(target)}
-        <span class="tag">${label(entry.outcome)}</span></h3>
-      <div class="big">${forms}</div>
-      ${rowsTable(entry)}
+      ${head(entry)}
+      <div class="spread">
+        ${bitmap ? `<figure class="shown">${faceSVG(entry, leaf.form, suite, 12)}</figure>` : ""}
+        ${rowsTable(entry)}
+        ${readout}
+      </div>
       ${entry.faults.length ? `<ul class="faults">${entry.faults.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${factsHTML(leaf.target, entry.replicate)}
     </section>`;
 }
 
-/** Row by row: the drawing, the hex it implies, the hex the model wrote. */
+const COPY_ICON =
+  '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
+  '<rect x="6" y="6" width="8" height="8" rx="1.5"/>' +
+  '<path d="M10 4V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>';
+const TICK_ICON =
+  '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M3 8.5l3.5 3.5L13 5"/></svg>';
+
+/**
+ * Put text on the clipboard, by whichever route is open.
+ *
+ * The modern call is refused more often than it looks -- an insecure origin, a
+ * permission not granted. Selecting the text and asking the document to copy is
+ * the older way and still works in those cases. If even that is refused the
+ * selection is left standing, which is worth more than a button that quietly
+ * did nothing.
+ */
+async function copyText(text, from) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const range = document.createRange?.();
+      if (range && from) {
+        range.selectNodeContents(from);
+        const selection = getSelection?.();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+      return document.execCommand?.("copy") ?? false;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/** What was sent to produce this face, on request. */
+function factsHTML(target, rep) {
+  const found = requestFor(target, rep, state.expression);
+  if (!found) return "";
+  const sent = [found.system && ["system", found.system], found.prompt && ["user", found.prompt]]
+    .filter(Boolean)
+    .map(([k, v]) => `<section><h4>${k}</h4><pre>${esc(v)}</pre></section>`)
+    .join("");
+  if (!sent) return "";
+  return `<div class="facts"><details><summary>the request as sent</summary>${sent}</details></div>`;
+}
+
+/**
+ * Row by row: the drawing, and the hex beside it.
+ *
+ * Which columns appear depends on what the target returned. Where the model
+ * wrote its own hex *and* a grid to check it against, both are shown and named
+ * apart; where only one exists there is nothing to distinguish it from, so it
+ * is just "hex".
+ */
 function rowsTable(entry) {
-  const grid = entry.grid ?? entry.given_grid;
+  const some = (a) => (Array.isArray(a) && a.length ? a : null);
+  const grid = some(entry.grid) ?? some(entry.given_grid);
   const w = suite.config.width;
-  const implied = entry.hex_from_grid ?? (grid ? hexFromBitmap(gridToBitmap(grid, w, grid.length)) : null);
-  const wrote = entry.hex ?? entry.expected_hex;
-  const n = Math.max(grid?.length ?? 0, wrote?.length ?? 0);
-  if (!n) return "";
+  const implied = some(entry.hex_from_grid) ?? (grid ? hexFromBitmap(gridToBitmap(grid, w, grid.length)) : null);
+  const wrote = some(entry.hex) ?? some(entry.expected_hex);
+  const both = implied && wrote;
+
+  const columns = [
+    grid && ["grid", (y) => grid[y]],
+    implied && [both ? "hex from grid" : "hex", (y) => implied[y]],
+    wrote && both && ["hex written", (y) => wrote[y]],
+    wrote && !implied && ["hex", (y) => wrote[y]],
+  ].filter(Boolean);
+  const n = Math.max(grid?.length ?? 0, wrote?.length ?? 0, implied?.length ?? 0);
+  if (!n || !columns.length) return "";
+
   const bad = new Set(entry.differing_rows ?? []);
-  const head = ["", grid && "grid", implied && "from grid", wrote && "hex"].filter(Boolean);
+  // The row-number column is headed by a blank cell, which must survive into
+  // the header or every heading sits one column to the left.
+  const head = ["", ...columns.map(([name]) => name)].map((h) => `<th>${h}</th>`).join("");
   const body = Array.from({ length: n }, (_, y) => {
-    const cells = [`<td class="n">${y}</td>`];
-    if (grid) cells.push(`<td>${esc(grid[y] ?? "")}</td>`);
-    if (implied) cells.push(`<td>${esc(implied[y] ?? "")}</td>`);
-    if (wrote) cells.push(`<td>${esc(wrote[y] ?? "")}</td>`);
+    const cells = [`<td class="n">${y}</td>`, ...columns.map(([, at]) => `<td>${esc(at(y) ?? "")}</td>`)];
     return `<tr${bad.has(y) ? ' class="bad"' : ""}>${cells.join("")}</tr>`;
   }).join("");
-  return `<table class="rows"><thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table>`;
+  return `<table class="rows"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
 // --------------------------------------------------------------------------- chrome
@@ -370,7 +681,12 @@ function renderChrome() {
   const page = PAGES[state.view];
   titleEl.textContent = page.title;
   introEl.textContent = page.intro;
-  barEl.toggleAttribute("hidden", CONTROLS[state.view].length === 0);
+  const used = controlsFor(state.view);
+  //: Selectors above choose what is on the page -- which model, which
+  //: expression, which form, which replicate. The row below only affects how it
+  //: is drawn, so it keeps its own line.
+  barEl.toggleAttribute("hidden", used.length === 0);
+  displayEl.toggleAttribute("hidden", OWN_CHASSIS.includes(state.view) || !DATA_VIEWS.includes(state.view));
   //: Nothing to save on a prose page.
   exportEl.toggleAttribute("hidden", !DATA_VIEWS.includes(state.view));
 
@@ -385,25 +701,35 @@ function renderChrome() {
           ["model", short(suite.config.model)],
           ["effort", suite.config.effort ?? "not applicable"],
           ["grid", `${suite.config.width} × ${suite.config.height}`],
-          ["tries", String(suite.repeats)],
+          ["replicates", String(suite.replicates)],
         ];
   detailsEl.toggleAttribute("hidden", rows.length === 0);
   detailsEl.innerHTML = rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
 
-  chassisEl.textContent = chassisLabel();
+  chassisEl.checked = state.chassis;
+  //: Malformed and disagreement are different findings, so they are marked
+  //: independently. A malformed answer is unusable; a disagreement means the two
+  //: written forms differ, which does not make either of them individually bad.
+  stageEl.classList?.toggle("hide-malformed", !state.marks.malformed);
+  stageEl.classList?.toggle("hide-differs", !state.marks.differs);
 }
 
 function render() {
   if (!suite) return;
+  //: Rebuilding the stage throws away where the reader had scrolled to. Selecting
+  //: a row is a re-render, so without this the list jumps to the top every time
+  //: you pick something from the bottom of it.
+  const scrolled = stageEl.querySelector?.(".scroll")?.scrollTop ?? 0;
   renderChrome();
   ({
     overview: renderOverview,
     method: renderMethod,
-    sheet: renderSheet,
-    compare: renderCompare,
-    inspect: renderInspect,
+    matrix: renderMatrix,
+    index: renderInspect,
     plate: renderPlate,
   })[state.view]();
+  const box = stageEl.querySelector?.(".scroll");
+  if (box && scrolled) box.scrollTop = scrolled;
   wire();
 }
 
@@ -411,10 +737,10 @@ function wire() {
   for (const b of stageEl.querySelectorAll?.(".face") ?? []) {
     b.onclick = () => {
       state.expression = b.dataset.name;
-      state.form = b.dataset.target;
+      state.form = b.dataset.leaf ?? b.dataset.target;
       suite = loaded.get(b.dataset.suite) ?? suite;
-      if (state.repeat !== "all") state.repeat = b.dataset.repeat;
-      setView("inspect");
+      if (state.replicate !== "all") state.replicate = b.dataset.replicate;
+      setView("index");
     };
   }
   for (const b of stageEl.querySelectorAll?.(".row") ?? []) {
@@ -432,19 +758,78 @@ function wire() {
       writeHash(false);
     };
   }
-  const tryEl = el("t-try");
-  if (tryEl)
-    tryEl.onchange = () => {
-      state.repeat = tryEl.value;
+  //: The key doubles as the control panel, so its switches are wired with the
+  //: rest of the stage on every render.
+  //: The key's selectors are the matrix's only controls, so they are wired with
+  //: the rest of the stage on every render.
+  for (const [id, key] of [["k-model", "model"], ["k-form", "form"]]) {
+    const node = el(id);
+    if (node)
+      node.onchange = () => {
+        state.narrow[key] = node.value;
+        syncFacets();
+      };
+  }
+  for (const chip of stageEl.querySelectorAll?.(".chip") ?? []) {
+    chip.onclick = () => {
+      const name = chip.dataset.expr;
+      const picked = state.narrow.expression;
+      state.narrow.expression = picked.includes(name)
+        ? picked.filter((x) => x !== name)
+        : [...picked, name];
+      syncFacets();
+    };
+  }
+  for (const b of stageEl.querySelectorAll?.(".chip-clear") ?? []) {
+    b.onclick = () => {
+      state.narrow.expression = [];
+      syncFacets();
+    };
+  }
+  const replEl = el("k-replicate");
+  if (replEl)
+    replEl.onchange = () => {
+      state.replicate = replEl.value;
+      setTimerFor(state.replicate);
+      syncFormats();
+      syncFacets();
+    };
+  for (const box of stageEl.querySelectorAll?.(".chassis-check") ?? []) {
+    box.onchange = () => {
+      state.chassis = Boolean(box.checked);
       render();
       writeHash(false);
     };
-  const chassisToggle = el("t-chassis");
-  if (chassisToggle)
-    chassisToggle.onclick = () => {
-      state.chassis = !state.chassis;
+  }
+  for (const box of stageEl.querySelectorAll?.(".mark") ?? []) {
+    box.onchange = () => {
+      state.marks[box.dataset.mark] = Boolean(box.checked);
       render();
       writeHash(false);
+    };
+  }
+  for (const b of stageEl.querySelectorAll?.(".pin") ?? []) {
+    b.onclick = () => {
+      if (b.dataset.model) state.narrow.model = b.dataset.model;
+      if (b.dataset.expr) state.narrow.expression = [b.dataset.expr];
+      syncFacets();
+    };
+  }
+  for (const b of stageEl.querySelectorAll?.(".copy") ?? []) {
+    b.onclick = async () => {
+      const ok = await copyText(b.dataset.copy, b.parentNode);
+      //: A button with no room for a word still has room for a different shape.
+      if (ok) {
+        b.setAttribute?.("data-copied", "");
+        setTimeout(() => b.removeAttribute?.("data-copied"), 1200);
+      }
+    };
+  }
+  const resetEl = el("k-reset");
+  if (resetEl)
+    resetEl.onclick = () => {
+      state.narrow = { model: "all", expression: [], form: "all" };
+      syncFacets();
     };
   for (const b of stageEl.querySelectorAll?.(".snap") ?? []) {
     b.onclick = (event) => {
@@ -452,6 +837,13 @@ function wire() {
       runExport(b.dataset.only);
     };
   }
+  const tryEl = el("t-replicate");
+  if (tryEl)
+    tryEl.onchange = () => {
+      state.replicate = tryEl.value;
+      render();
+      writeHash(false);
+    };
   for (const [id, key] of [["f-model", "model"], ["f-expression", "expression"], ["f-form", "form"]]) {
     const node = el(id);
     if (node)
@@ -465,8 +857,10 @@ function wire() {
 // --------------------------------------------------------------------------- controls
 
 function applyChrome() {
-  const used = CONTROLS[state.view];
-  for (const [id, node] of [["suites", suitesEl], ["expression", expressionEl], ["targets", targetsEl], ["repeat", repeatEl]]) {
+  //: On the crossing page the visible selector is whichever parameter is held,
+  //: so the control set is computed rather than fixed.
+  const used = controlsFor(state.view);
+  for (const [id, node] of [["suites", suitesEl], ["expression", expressionEl], ["targets", targetsEl], ["replicate", replicateEl]]) {
     node.closest?.(".field")?.toggleAttribute("hidden", !used.includes(id));
   }
   for (const tab of navEl.querySelectorAll?.("[data-view]") ?? []) {
@@ -474,63 +868,125 @@ function applyChrome() {
   }
 }
 
-/** "all" cycles the tries in place, so variance reads as movement. */
+/**
+ * "all" cycles the replicates in place, so variance reads as movement.
+ *
+ * Only on the matrix. On the index "all" lays them out side by side, and a
+ * timer there would redraw the whole page -- and its scroll position -- every
+ * 700ms for an animation nobody asked for.
+ */
 function setTimerFor(mode) {
   if (timer) clearInterval(timer);
   timer = null;
-  if (mode !== "all") return;
+  if (mode !== "all" || state.view !== "matrix") return;
   timer = setInterval(() => {
     state.frame++;
-    render();
+    renderFrame();
   }, 700);
 }
 
-/** The cycle exports as a GIF; a single try exports as a still. */
+/** The cycle exports as a GIF; a single replicate exports as a still. */
 function syncFormats() {
-  const animated = state.repeat === "all";
+  const animated = state.replicate === "all";
   const options = animated ? [["gif", "GIF"]] : [["png", "PNG"], ["jpeg", "JPEG"]];
   const keep = formatEl.value;
   formatEl.innerHTML = options.map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
   formatEl.value = options.some(([v]) => v === keep) ? keep : options[0][0];
 }
 
+const FACETED = ["matrix"];
+const faceted = () => FACETED.includes(state.view);
+const option = (v, t, cur) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(t)}</option>`;
+
+const modelOptions = (current) =>
+  option("all", "all", current) +
+  catalogue.map((c) => option(c.id, suiteName(c), current)).join("");
+
+const expressionOptions = (current) =>
+  option("all", "all", current) +
+  (suite?.expressions ?? []).map((n) => option(n, n, current)).join("");
+
+const replicateOptions = (current, n) =>
+  Array.from({ length: n }, (_, i) => option(String(i + 1), `replicate ${i + 1}`, current)).join("") +
+  (n > 1 ? option("all", `all (${n})`, current) : "");
+
 function fillExpressions() {
   const names = suite?.expressions ?? [];
+  if (faceted()) {
+    //: The matrix offers the whole set as chips in its key; here we only keep
+    //: the selection honest against the suite that is loaded.
+    state.narrow.expression = state.narrow.expression.filter((n) => names.includes(n));
+    return;
+  }
   expressionEl.innerHTML = names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
   state.expression = names.includes(state.expression) ? state.expression : names[0];
   expressionEl.value = state.expression;
 }
 
+function fillSuites() {
+  const models = catalogue.map((c) => option(c.id, suiteName(c), faceted() ? state.narrow.model : suite?.id));
+  suitesEl.innerHTML = faceted()
+    ? option("all", "all", state.narrow.model) + models.join("")
+    : models.join("");
+  suitesEl.value = faceted() ? state.narrow.model : suite?.id;
+}
+
 function fillTargets() {
   const targets = suite?.targets ?? [];
-  const all = state.view === "plate" ? "" : `<option value="all">all forms</option>`;
-  targetsEl.innerHTML = all + targets.map((t) => `<option value="${t}">${formName(t)}</option>`).join("");
-  if (state.view === "plate" && state.target === "all") state.target = targets.at(-1) ?? "all";
+  const single = ONE_FORM.includes(state.view);
+  const chosen = faceted() ? state.narrow.form : state.target;
+  const all = single ? "" : option("all", "all", chosen);
+  targetsEl.innerHTML = all + targets.map((t) => option(t, formName(t), chosen)).join("");
+  if (faceted()) {
+    const offered = FORM_FILTERS.filter(([v]) => v === "all" || targets.includes(v.split(":")[0]));
+    targetsEl.innerHTML = offered.map(([v, t]) => option(v, t, state.narrow.form)).join("");
+    if (!offered.some(([v]) => v === state.narrow.form)) state.narrow.form = "all";
+    targetsEl.value = state.narrow.form;
+    return;
+  }
+  if (single && state.target === "all") state.target = targets[0] ?? "all";
   if (![...targetsEl.options].some((o) => o.value === state.target)) state.target = targetsEl.options[0]?.value ?? "all";
   targetsEl.value = state.target;
 }
 
-function fillRepeats() {
-  const n = state.view === "compare" ? Math.min(...[...loaded.values()].map((s) => s.repeats)) : suite.repeats;
-  const keep = state.repeat;
-  repeatEl.innerHTML =
-    Array.from({ length: n }, (_, i) => `<option value="${i + 1}">try ${i + 1}</option>`).join("") +
-    (n > 1 && state.view !== "inspect" ? `<option value="all">all ${n}</option>` : "");
-  const has = (v) => [...repeatEl.options].some((o) => o.value === v);
-  state.repeat = has(keep) ? keep : has("all") ? "all" : "1";
-  repeatEl.value = state.repeat;
-  setTimerFor(state.repeat);
+/** How many replicates every suite on the page has in common. */
+function replicateCount() {
+  const spans = state.view === "matrix";
+  return spans ? Math.min(...[...loaded.values()].map((s) => s.replicates)) : suite.replicates;
+}
+
+function fillReplicates() {
+  const n = replicateCount();
+  const keep = state.replicate;
+  //: The index used to offer no cycle, so it was capped to one. Its bench shows
+  //: every replicate as a grid now, so it takes the same options as anywhere.
+  replicateEl.innerHTML = replicateOptions(state.replicate, n);
+  const has = (v) => [...replicateEl.options].some((o) => o.value === v);
+  state.replicate = has(keep) ? keep : has("all") ? "all" : "1";
+  replicateEl.value = state.replicate;
+  setTimerFor(state.replicate);
   syncFormats();
+}
+
+/** Re-read the facets into the controls, redraw, and record it in the address. */
+function syncFacets() {
+  fillSuites();
+  fillExpressions();
+  fillTargets();
+  render();
+  writeHash(false);
 }
 
 async function setView(next, { push = true } = {}) {
   state.view = next;
   applyChrome();
-  if (next === "compare" || next === "inspect") await Promise.all(catalogue.map((s) => fetchSuite(s.id)));
+  if (["matrix", "index"].includes(next))
+    await Promise.all(catalogue.map((s) => fetchSuite(s.id)));
+  fillSuites();
   fillExpressions();
   fillTargets();
-  fillRepeats();
-  state.form = suite.targets.includes(state.form) ? state.form : suite.targets[0];
+  fillReplicates();
+  if (!LEAVES.some((l) => l.key === state.form)) state.form = LEAVES[0].key;
   render();
   writeHash(push);
 }
@@ -541,15 +997,39 @@ async function setView(next, { push = true } = {}) {
 // history entry and a control change does not, so Back moves between views
 // rather than undoing a dropdown, and any state is a shareable link.
 
+/** Only the marks that are switched off need saying. */
+function markParams(params) {
+  for (const [k, on] of Object.entries(state.marks)) if (!on) params.set(k, "0");
+}
+
 function writeHash(push) {
   const wanted = PARAMS[state.view];
   const params = new URLSearchParams();
+  //: A faceted view's address is its filters and nothing else -- an unfiltered
+  //: page should produce a bare link, not one restating every default.
+  if (faceted()) {
+    for (const [k, param] of [["model", "model"], ["form", "form"]]) {
+      if (state.narrow[k] !== "all") params.set(param, state.narrow[k]);
+    }
+    if (state.narrow.expression.length) params.set("expr", state.narrow.expression.join(","));
+    if (wanted.includes("replicate")) params.set("replicate", state.replicate);
+    if (!state.chassis) params.set("chassis", "0");
+    markParams(params);
+    const query = params.toString();
+    const hash = `#/${state.view}${query ? `?${query}` : ""}`;
+    if (location.hash === hash) return;
+    const url = location.pathname + hash;
+    if (push) history.pushState(null, "", url);
+    else history.replaceState(null, "", url);
+    return;
+  }
   if (wanted.includes("suite")) params.set("suite", suite.id);
   if (wanted.includes("expr")) params.set("expr", state.expression);
   if (wanted.includes("form")) params.set("form", state.form ?? suite.targets[0]);
   if (wanted.includes("target")) params.set("target", state.target);
-  if (wanted.includes("try")) params.set("try", state.repeat);
+  if (wanted.includes("replicate")) params.set("replicate", state.replicate);
   if (!state.chassis) params.set("chassis", "0");
+  markParams(params);
   const query = params.toString();
   const hash = `#/${state.view}${query ? `?${query}` : ""}`;
   if (location.hash === hash) return;
@@ -562,6 +1042,14 @@ async function readHash() {
   const [path, query] = location.hash.replace(/^#\/?/, "").split("?");
   const params = new URLSearchParams(query ?? "");
   const view = path in CONTROLS ? path : "overview";
+  if (params.get("form")) state.target = params.get("form");
+  if (view === "matrix") {
+    state.narrow = {
+      model: params.get("model") ?? "all",
+      expression: (params.get("expr") ?? "").split(",").filter(Boolean),
+      form: params.get("form") ?? "all",
+    };
+  }
   const id = params.get("suite");
   if (id && catalogue.some((s) => s.id === id)) {
     suite = await fetchSuite(id);
@@ -573,7 +1061,8 @@ async function readHash() {
   state.target = params.get("target") ?? "all";
   state.form = params.get("form") ?? state.form;
   state.chassis = params.get("chassis") !== "0";
-  state.repeat = params.get("try") ?? "all";
+  state.marks = { malformed: params.get("malformed") !== "0", differs: params.get("differs") !== "0" };
+  state.replicate = params.get("replicate") ?? "all";
   await setView(view, { push: false });
 }
 
@@ -587,7 +1076,7 @@ async function load(id) {
   suitesEl.value = id;
   fillExpressions();
   fillTargets();
-  fillRepeats();
+  fillReplicates();
   render();
 }
 
@@ -598,20 +1087,30 @@ async function boot() {
     return;
   }
   suitesEl.innerHTML = catalogue.map((s) => `<option value="${esc(s.id)}">${esc(suiteName(s))}</option>`).join("");
-  suitesEl.onchange = () => load(suitesEl.value).then(() => writeHash(false));
+  suitesEl.onchange = () => {
+    if (faceted()) {
+      state.narrow.model = suitesEl.value;
+      return syncFacets();
+    }
+    load(suitesEl.value).then(() => writeHash(false));
+  };
   expressionEl.onchange = () => {
     state.expression = expressionEl.value;
     render();
     writeHash(false);
   };
   targetsEl.onchange = () => {
+    if (faceted()) {
+      state.narrow.form = targetsEl.value;
+      return syncFacets();
+    }
     state.target = targetsEl.value;
     render();
     writeHash(false);
   };
-  repeatEl.onchange = () => {
-    state.repeat = repeatEl.value;
-    setTimerFor(state.repeat);
+  replicateEl.onchange = () => {
+    state.replicate = replicateEl.value;
+    setTimerFor(state.replicate);
     syncFormats();
     render();
     writeHash(false);
@@ -620,12 +1119,21 @@ async function boot() {
     const view = event.target?.dataset?.view;
     if (view) setView(view);
   };
-  chassisEl.onclick = () => {
-    state.chassis = !state.chassis;
+  chassisEl.onchange = () => {
+    state.chassis = Boolean(chassisEl.checked);
     render();
     writeHash(false);
   };
   addEventListener("hashchange", readHash);
+  //: The size is solved against the window, so it has to be solved again when
+  //: the window changes. Debounced, because resize fires continuously.
+  let resizing = null;
+  addEventListener("resize", () => {
+    clearTimeout(resizing);
+    resizing = setTimeout(() => {
+      if (state.view === "matrix") render();
+    }, 120);
+  });
   await load(catalogue[0].id);
   await readHash();
 }
@@ -636,7 +1144,7 @@ function esc(text) {
 
 // --------------------------------------------------------------------------- export
 
-/** Draw the current view once, at whichever try `state.frame` is on. */
+/** Draw the current view once, at whichever replicate `state.frame` is on. */
 function drawCurrent(chassis, only = null) {
   const suites = catalogue.map((s) => loaded.get(s.id)).filter(Boolean);
 
@@ -650,55 +1158,48 @@ function drawCurrent(chassis, only = null) {
     return drawPlate({ cells, config: suite.config, chassis });
   }
 
-  if (state.view === "inspect") {
-    const rep = state.repeat === "all" ? "1" : state.repeat;
-    const panels = [state.form ?? suite.targets[0]]
-      .map((target) => {
-        const all = suite.cells[state.expression]?.[target] ?? [];
-        const entry = all.find((e) => String(e.repeat) === rep) ?? all[0];
-        if (!entry) return null;
-        const forms = columnsFor([target])
-          .map((c) => ({ label: c.form, bitmap: bitmapOf(entry, c.form, suite.config) }))
-          .filter((f) => f.bitmap);
-        return forms.length
-          ? { target: formName(target), outcome: label(entry.outcome), forms, hex: entry.hex, bad: new Set(entry.differing_rows ?? []) }
-          : null;
-      })
-      .filter(Boolean);
-    if (!panels.length) return null;
-    return drawInspect({ panels, config: suite.config, chassis });
+  if (state.view === "index") {
+    const leaf = LEAVES.find((l) => l.key === state.form) ?? LEAVES[0];
+    const all = suite.cells[state.expression]?.[leaf.target] ?? [];
+    const wanted = state.replicate === "all" ? all : all.filter((e) => String(e.replicate) === state.replicate);
+    const cells = wanted
+      .map((entry) => ({
+        label: `replicate ${entry.replicate}`,
+        bitmap: bitmapOf(entry, leaf.form, suite.config),
+      }))
+      .filter((c) => c.bitmap);
+    if (!cells.length) return null;
+    return drawPlate({ cells, config: suite.config, chassis, across: Math.min(3, cells.length) });
   }
 
-  if (state.view === "sheet") {
-    const groups = columnsFor(suite.targets).reduce((acc, c) => {
-      const last = acc.at(-1);
-      if (last && last.target === c.target) last.columns.push(c);
-      else acc.push({ target: c.target, label: c.label, columns: [c] });
-      return acc;
-    }, []);
-    const wanted = only ? [only] : suite.expressions;
-    const blocks = wanted.map((name) => ({
-      label: name,
-      groups: groups.map((g) => ({
-        label: g.label,
-        bitmaps: g.columns.map((c) => bitmapOf(entryAt(suite, name, c.target), c.form, suite.config)),
-      })),
-    }));
-    return drawBlocks({ blocks, config: suite.config, chassis, across: only ? 1 : 2 });
-  }
+  //: The matrix is the only grid left, and it exports what the facets left on
+  //: screen -- not the whole thing regardless of what the reader narrowed to.
+  const { model, expression, form } = state.narrow;
+  const every = catalogue.map((x) => loaded.get(x.id)).filter(Boolean);
+  const shown = model === "all" ? every : every.filter((x) => x.id === model);
+  const allNames = every[0]?.expressions ?? [];
+  const names = expression.length ? allNames.filter((n) => expression.includes(n)) : allNames;
+  const quad = quadFor(form);
+  const targets = [...new Set(quad.map((q) => q.target))];
 
-  const targets = [...new Set(suites.flatMap((s) => s.targets))];
-  return drawGrid({
-    rows: suites.map((s) => ({ label: suiteName(s), name: state.expression, from: s })),
-    columns: columnsFor(targets),
+  return drawQuads({
+    rows: names.map((n) => ({ label: n, name: n })),
+    columns: shown.map((x) => ({ label: suiteName(x), from: x })),
+    across: Math.min(2, quad.length),
     config: suite.config,
     chassis,
     legend: {
       forms: targets.map((t) => [formName(t), TARGETS[t]]),
-      outcomes: Object.entries(OUTCOMES).map(([k, [name, meaning]]) => ({ key: k, name, meaning })),
+      outcomes: Object.entries(OUTCOMES)
+        .filter(([k]) => MARKABLE.has(k) && state.marks[k])
+        .map(([k, [name, meaning]]) => ({ key: k, name, meaning })),
     },
-    heading: figureTitle(),
-    cellFor: (row, column) => bitmapOf(entryAt(row.from, row.name, column.target), column.form, row.from.config),
+    cellFor: (row, column) =>
+      quad.map(({ target, form: f }) => {
+        if (!column.from.targets.includes(target)) return null;
+        const entry = entryAt(column.from, row.name, target);
+        return { bitmap: bitmapOf(entry, f, column.from.config), outcome: entry?.outcome };
+      }),
   });
 }
 
@@ -707,8 +1208,8 @@ const fileName = (only = null) => {
   return (
     {
       plate: `${suite.id}-plate`,
-      inspect: `${suite.id}-${state.expression}-${formName(state.form ?? suite.targets[0])}`,
-      compare: `compare-${state.expression}`,
+      index: `${suite.id}-${state.expression}-${leafName(state.form)}`,
+      matrix: `${suite.id.split("-")[0]}-matrix`,
     }[state.view] ?? suite.id
   );
 };
@@ -728,7 +1229,7 @@ function runExport(only = null) {
   const was = state.frame;
   const frames = [];
   let size = null;
-  for (let i = 0; i < suite.repeats; i++) {
+  for (let i = 0; i < suite.replicates; i++) {
     state.frame = i;
     const canvas = drawCurrent(chassis, only);
     if (!canvas) continue;
@@ -744,4 +1245,4 @@ function runExport(only = null) {
 el("save").onclick = () => runExport();
 
 boot();
-export { state, setView, runExport, columnsFor, bitmapOf, entryAt, bestAt };
+export { state, setView, runExport, layoutFor, columnsFor, bitmapOf, entryAt, bestAt };

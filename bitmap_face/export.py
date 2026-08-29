@@ -4,7 +4,7 @@ Turn a directory of run records into something small enough to read.
 A run record holds every pixel of every attempt, which is what the panel needs
 and exactly what nobody -- human or model -- should page through to answer "how
 did Haiku do at transcription". This writes an index: one compact row per run,
-plus a roll-up per condition so repeats can be compared, and no pixels anywhere.
+plus a roll-up per condition so replicates can be compared, and no pixels anywhere.
 
 Read the index. Reach for a run record only to render it.
 
@@ -58,7 +58,7 @@ def summarise(path: Path) -> dict[str, Any]:
         "file": path.name,
         "schema_version": record.get("schema_version", 1),
         "started_at": record["started_at"],
-        "repeat": record["repeat"],
+        "replicate": record["replicate"],
         "condition": condition,
         "slug": condition["slug"],
         "totals": totals,
@@ -74,7 +74,7 @@ def summarise(path: Path) -> dict[str, Any]:
 
 
 def roll_up(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """One row per condition, across its repeats. This is the comparison table."""
+    """One row per condition, across its replicates. This is the comparison table."""
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for run in runs:
         grouped[run["slug"]].append(run)
@@ -90,13 +90,13 @@ def roll_up(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "slug": slug,
                 "condition": group[0]["condition"],
-                "repeats": len(group),
+                "replicates": len(group),
                 "runs": [r["id"] for r in group],
                 "well_formed": sum(r["totals"]["well_formed"] for r in group),
                 "returned": sum(r["totals"]["returned"] for r in group),
                 "agreed": sum(r["totals"]["agreed"] for r in group),
                 "measurable": sum(r["totals"]["measurable"] for r in group),
-                # Spread across repeats is the point of repeating: a condition that
+                # Spread across replicates is the point of repeating: a condition that
                 # scores 100% and 12% is not the same as one that scores 56% twice.
                 "agreement_rate": {
                     "mean": round(mean(rates), 4) if rates else None,
@@ -142,7 +142,7 @@ def main() -> None:
             else f"{rate['mean']:.0%} ({rate['min']:.0%}-{rate['max']:.0%})"
         )
         print(
-            f"{c['slug']:<44} {c['repeats']:>3} {c['well_formed']:>3}/{c['returned']:<3} "
+            f"{c['slug']:<44} {c['replicates']:>3} {c['well_formed']:>3}/{c['returned']:<3} "
             f"{c['agreed']:>3}/{c['measurable']:<4} {band:>16} {c['output_tokens']:>8}"
         )
     print(f"\n{index['count']} runs across {len(index['conditions'])} conditions -> {INDEX}")

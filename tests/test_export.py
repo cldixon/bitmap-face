@@ -16,7 +16,7 @@ def _record(**over):
     base = {
         "id": "r1",
         "started_at": "2026-01-01T00:00:00+00:00",
-        "repeat": 1,
+        "replicate": 1,
         "schema_version": 3,
         "condition": {
             "model": "claude-haiku-4-5",
@@ -69,7 +69,7 @@ def test_the_index_carries_neither_pixels_nor_prompts(tmp_path) -> None:
     index = build_index(tmp_path)
     blob = json.dumps(index)
 
-    # Prompts are large and repeat per call; the index exists to be read at a
+    # Prompts are large and replicate per call; the index exists to be read at a
     # glance, and a prompt in it would dwarf everything else.
     assert "SECRET_PROMPT_TEXT" not in blob
     assert "SECRET_SYSTEM_TEXT" not in blob
